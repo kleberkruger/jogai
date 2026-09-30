@@ -5,7 +5,11 @@ import java.util.UUID;
 
 public class Entidade {
 
-    protected UUID id;
+    protected final UUID id;
+
+    protected Entidade(UUID id) {
+        this.id = Objects.requireNonNull(id, "ID não pode ser nulo");
+    }
 
     public UUID getId() {
         return id;

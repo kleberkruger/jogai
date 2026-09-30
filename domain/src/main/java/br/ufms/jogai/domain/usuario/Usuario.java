@@ -1,0 +1,127 @@
+package br.ufms.jogai.domain.usuario;
+
+import br.ufms.jogai.domain.shared.Entidade;
+import br.ufms.jogai.domain.util.Validar;
+
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.Objects;
+import java.util.UUID;
+
+public class Usuario extends Entidade {
+
+    private String nome;
+    private String email;
+    private String telefone;
+    private LocalDate dataNascimento;
+    private final Instant dataCadastro;
+    private StatusUsuario status;
+
+    private Usuario(
+            UUID id,
+            String nome,
+            String email,
+            String telefone,
+            LocalDate dataNascimento,
+            Instant dataCadastro,
+            StatusUsuario status
+    ) {
+        super(id);
+
+        setNome(nome);
+        setEmail(email);
+        setTelefone(telefone);
+        setDataNascimento(dataNascimento);
+
+        this.dataCadastro = Objects.requireNonNull(dataCadastro, "data de cadastro não pode ser nula");
+        this.status = Objects.requireNonNull(status, "status do usuário não pode ser nulo");
+    }
+
+    public String getNome() {
+        return nome;
+    }
+
+    public void setNome(String nome) {
+        this.nome = Validar.nomePessoa(nome, true);
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = Validar.email(email, true);
+    }
+
+    public String getTelefone() {
+        return telefone;
+    }
+
+    public void setTelefone(String telefone) {
+        this.telefone = Validar.telefone(telefone, true);
+    }
+
+    public LocalDate getDataNascimento() {
+        return dataNascimento;
+    }
+
+    public void setDataNascimento(LocalDate dataNascimento) {
+        this.dataNascimento = Validar.dataNascimento(dataNascimento, true);
+    }
+
+    public Instant getDataCadastro() {
+        return dataCadastro;
+    }
+
+    public StatusUsuario getStatus() {
+        return status;
+    }
+
+    public void ativar() {
+        this.status = StatusUsuario.ATIVO;
+    }
+
+    public void inativar() {
+        this.status = StatusUsuario.INATIVO;
+    }
+
+    public void bloquear() {
+        this.status = StatusUsuario.BLOQUEADO;
+    }
+
+    public static Usuario create(
+            String nome,
+            String email,
+            String telefone,
+            LocalDate dataNascimento
+    ) {
+        return new Usuario(
+                UUID.randomUUID(),
+                nome,
+                email,
+                telefone,
+                dataNascimento,
+                Instant.now(),
+                StatusUsuario.ATIVO
+        );
+    }
+
+    public static Usuario reconstitute(
+            UUID id,
+            String nome,
+            String email,
+            String telefone,
+            LocalDate dataNascimento,
+            StatusUsuario status,
+            Instant dataCadastro) {
+        return new Usuario(
+                id,
+                nome,
+                email,
+                telefone,
+                dataNascimento,
+                dataCadastro,
+                status
+        );
+    }
+}
