@@ -1,30 +1,24 @@
 package br.ufms.jogai.domain.shared;
 
 import java.util.Objects;
+import java.util.UUID;
 
-/**
- * Igualdade de entidades é determinada por identidade, não por seus atributos mutáveis.
- */
-public abstract class Entidade<ID extends Identificador> {
+public class Entidade {
 
-    private final ID id;
+    protected UUID id;
 
-    protected Entidade(ID id) {
-        this.id = Objects.requireNonNull(id, "id não pode ser nulo");
-    }
-
-    public final ID id() {
+    public UUID getId() {
         return id;
     }
 
     @Override
-    public final boolean equals(Object other) {
-        return this == other || (other != null && getClass() == other.getClass()
-                && id.equals(((Entidade<?>) other).id));
+    public boolean equals(Object o) {
+        if (!(o instanceof Entidade entidade)) return false;
+        return Objects.equals(id, entidade.id);
     }
 
     @Override
-    public final int hashCode() {
-        return Objects.hash(getClass(), id);
+    public int hashCode() {
+        return Objects.hashCode(id);
     }
 }

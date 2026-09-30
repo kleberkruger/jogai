@@ -1,0 +1,17 @@
+package br.ufms.jogai.domain.AI.reserva;
+
+import br.ufms.jogai.domain.AI.shared.Identificador;
+
+import java.util.Objects;
+import java.util.UUID;
+
+public record ReservaId(UUID valor) implements Identificador {
+
+    public ReservaId {
+        Objects.requireNonNull(valor, "valor não pode ser nulo");
+    }
+
+    public static ReservaId novo() {
+        return new ReservaId(UUID.randomUUID());
+    }
+}
