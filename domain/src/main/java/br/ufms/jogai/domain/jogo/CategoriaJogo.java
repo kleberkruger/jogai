@@ -30,7 +30,7 @@ public class CategoriaJogo extends Entidade<String> {
     }
 
     public void setDescricao(String descricao) {
-        this.descricao = descricao;
+        this.descricao = descricao != null ? descricao.trim() : null;
     }
 
     public static CategoriaJogo create(String chave, String nome, String descricao) {

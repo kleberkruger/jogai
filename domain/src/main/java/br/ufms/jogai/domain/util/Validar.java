@@ -135,16 +135,6 @@ public class Validar {
         return anoLancamento;
     }
 
-    public static Pair<Integer, Integer> validarNumeroJogadores(int minimoJogadores, Integer maximoJogadores) {
-        if (minimoJogadores < 1) {
-            throw new IllegalArgumentException("O mínimo de jogadores deve ser 1");
-        } else if (minimoJogadores > maximoJogadores) {
-            throw new IllegalArgumentException("O mínimo de jogadores não poder ser maior que o máximo");
-        }
-
-        return minimoJogadores, maximoJogadores;
-    }
-
     /**
      * Valida a razão social de uma pessoa jurídica.
      *

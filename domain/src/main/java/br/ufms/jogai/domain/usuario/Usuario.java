@@ -5,6 +5,7 @@ import br.ufms.jogai.domain.util.Validar;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.Period;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -69,6 +70,18 @@ public class Usuario extends Entidade<UUID> {
         this.dataNascimento = Validar.dataNascimento(dataNascimento, true);
     }
 
+    public int getIdade() {
+        return Period.between(dataNascimento, LocalDate.now()).getYears();
+    }
+
+    public boolean temIdadeIgualOuMaiorQue(int idade) {
+        return getIdade() >= idade;
+    }
+
+    public boolean isMaiorIdade() {
+        return temIdadeIgualOuMaiorQue(18);
+    }
+
     public Instant getDataCadastro() {
         return dataCadastro;
     }
@@ -113,7 +126,8 @@ public class Usuario extends Entidade<UUID> {
             String telefone,
             LocalDate dataNascimento,
             Instant dataCadastro,
-            StatusUsuario status) {
+            StatusUsuario status
+    ) {
         return new Usuario(
                 id,
                 nome,

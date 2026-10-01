@@ -176,7 +176,7 @@ public class Jogo extends Entidade<UUID> {
     }
 
     public void setDescricao(String descricao) {
-        this.descricao = descricao != null ? descricao.strip() : null;
+        this.descricao = descricao != null ? descricao.trim() : null;
     }
 
     public boolean isAtivo() {
