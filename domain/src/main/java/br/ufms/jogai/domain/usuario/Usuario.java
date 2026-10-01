@@ -8,7 +8,7 @@ import java.time.LocalDate;
 import java.util.Objects;
 import java.util.UUID;
 
-public class Usuario extends Entidade {
+public class Usuario extends Entidade<UUID> {
 
     private String nome;
     private String email;
@@ -112,8 +112,8 @@ public class Usuario extends Entidade {
             String email,
             String telefone,
             LocalDate dataNascimento,
-            StatusUsuario status,
-            Instant dataCadastro) {
+            Instant dataCadastro,
+            StatusUsuario status) {
         return new Usuario(
                 id,
                 nome,

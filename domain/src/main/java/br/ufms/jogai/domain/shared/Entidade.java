@@ -3,26 +3,26 @@ package br.ufms.jogai.domain.shared;
 import java.util.Objects;
 import java.util.UUID;
 
-public class Entidade {
+public class Entidade<ID> {
 
-    protected final UUID id;
+    protected final ID id;
 
-    protected Entidade(UUID id) {
+    protected Entidade(ID id) {
         this.id = Objects.requireNonNull(id, "ID não pode ser nulo");
     }
 
-    public UUID getId() {
+    public ID getId() {
         return id;
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (!(o instanceof Entidade entidade)) return false;
-        return Objects.equals(id, entidade.id);
+    public final boolean equals(Object o) {
+        if (!(o instanceof Entidade<?> entidade)) return false;
+        return id.equals(entidade.id);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(id);
+        return id.hashCode();
     }
 }

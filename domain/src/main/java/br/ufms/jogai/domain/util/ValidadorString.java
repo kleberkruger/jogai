@@ -5,7 +5,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-class ValidadorString extends Validador<String, ValidadorString> {
+public class ValidadorString extends Validador<String, ValidadorString> {
 
     private final String valorTratado;
 

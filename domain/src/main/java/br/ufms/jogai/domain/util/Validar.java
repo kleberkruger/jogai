@@ -2,6 +2,7 @@ package br.ufms.jogai.domain.util;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Year;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Function;
@@ -51,6 +52,97 @@ public class Validar {
                 .validarNulo()
                 .validarTamanho(1, 50)
                 .getValor(ValidadorString::removerEspacosAdicionais);
+    }
+
+    /**
+     * Valida o nome de um jogo
+     *
+     * @param nome nome do jogo
+     * @return nome validado
+     */
+    public static String nomeJogo(String nome) {
+        return new ValidadorString("Nome do jogo", nome)
+                .validarNulo()
+                .validarTamanho(1, 50)
+                .getValor(ValidadorString::removerEspacosAdicionais);
+    }
+
+    /**
+     * Valida o nome de uma editora
+     *
+     * @param nome nome da editora
+     * @return nome validado
+     */
+    public static String nomeEditora(String nome) {
+        return new ValidadorString("Nome da editora", nome)
+                .validarNulo()
+                .validarTamanho(1, 50)
+                .getValor(ValidadorString::removerEspacosAdicionais);
+    }
+
+    /**
+     * Valida o nome de uma categoria de jogo
+     *
+     * @param nome nome da categoria
+     * @return nome da categoria validado
+     */
+    public static String nomeCategoriaJogo(String nome) {
+        return new ValidadorString("Nome da categoria", nome)
+                .validarNulo()
+                .validarTamanho(2, 30)
+                .getValor(ValidadorString::removerEspacosAdicionais);
+    }
+
+    /**
+     * Valida o ano de lançamento do jogo
+     *
+     * @param anoLancamento ano de lançamento como inteiro
+     * @return o ano de lançamento
+     */
+    public static Year anoLancamentoJogo(Integer anoLancamento) {
+        return anoLancamentoJogo(Year.of(anoLancamento));
+    }
+
+    /**
+     * Valida o ano de lançamento do jogo
+     *
+     * @param anoLancamento ano de lançamento como inteiro
+     * @param obrigatorio   verdadeiro quando obrigatório
+     * @return o ano de lançamento
+     */
+    public static Year anoLancamentoJogo(Integer anoLancamento, boolean obrigatorio) {
+        return anoLancamentoJogo(Year.of(anoLancamento), obrigatorio);
+    }
+
+    public static Year anoLancamentoJogo(Year anoLancamento) {
+        return anoLancamentoJogo(anoLancamento, false);
+    }
+
+    public static Year anoLancamentoJogo(Year anoLancamento, boolean obrigatorio) {
+        if (anoLancamento == null) {
+            if (obrigatorio) {
+                throw new IllegalArgumentException("O ano de lançamento é obrigatório");
+            }
+            return null;
+        }
+
+        if (anoLancamento.isAfter(Year.now())) {
+            throw new IllegalArgumentException("O ano de lançamento não pode ser futuro: " + anoLancamento);
+        } else if (anoLancamento.isBefore(Year.of(1))) {
+            throw new IllegalArgumentException("O ano de lançamento deve ser posterior a 1");
+        }
+
+        return anoLancamento;
+    }
+
+    public static Pair<Integer, Integer> validarNumeroJogadores(int minimoJogadores, Integer maximoJogadores) {
+        if (minimoJogadores < 1) {
+            throw new IllegalArgumentException("O mínimo de jogadores deve ser 1");
+        } else if (minimoJogadores > maximoJogadores) {
+            throw new IllegalArgumentException("O mínimo de jogadores não poder ser maior que o máximo");
+        }
+
+        return minimoJogadores, maximoJogadores;
     }
 
     /**
