@@ -18,7 +18,7 @@ public class Exemplar extends Entidade<UUID> {
     private Exemplar(
             UUID id,
             JogoInfo jogoInfo,
-            UsuarioInfo usuarioInfo,
+            UsuarioInfo proprietarioInfo,
             EstadoConservacao estadoConservacao,
             Instant dataCadastro
     ) {
@@ -27,7 +27,7 @@ public class Exemplar extends Entidade<UUID> {
         this.jogo = Objects.requireNonNull(
                 jogoInfo, "As informações do jogo não podem ser nulas");
         this.proprietario = Objects.requireNonNull(
-                usuarioInfo, "As informações do proprietário do jogo não podem ser nulas");
+                proprietarioInfo, "As informações do proprietário do jogo não podem ser nulas");
         this.dataCadastro = Objects.requireNonNull(
                 dataCadastro, "A data de cadastro não pode ser nula");
 
@@ -72,19 +72,19 @@ public class Exemplar extends Entidade<UUID> {
 
     public static Exemplar create(
             JogoInfo jogoInfo,
-            UsuarioInfo usuarioInfo,
+            UsuarioInfo proprietarioInfo,
             EstadoConservacao estadoConservacao
     ) {
-        return new Exemplar(UUID.randomUUID(), jogoInfo, usuarioInfo, estadoConservacao, Instant.now());
+        return new Exemplar(UUID.randomUUID(), jogoInfo, proprietarioInfo, estadoConservacao, Instant.now());
     }
 
     public static Exemplar reconstitute(
             UUID id,
             JogoInfo jogoInfo,
-            UsuarioInfo usuarioInfo,
+            UsuarioInfo proprietarioInfo,
             EstadoConservacao estadoConservacao,
             Instant dataCadastro
     ) {
-        return new Exemplar(id, jogoInfo, usuarioInfo, estadoConservacao, dataCadastro);
+        return new Exemplar(id, jogoInfo, proprietarioInfo, estadoConservacao, dataCadastro);
     }
 }

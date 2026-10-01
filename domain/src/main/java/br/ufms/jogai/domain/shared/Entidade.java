@@ -1,9 +1,9 @@
 package br.ufms.jogai.domain.shared;
 
+import java.io.Serializable;
 import java.util.Objects;
-import java.util.UUID;
 
-public class Entidade<ID> {
+public class Entidade<ID extends Serializable> {
 
     protected final ID id;
 

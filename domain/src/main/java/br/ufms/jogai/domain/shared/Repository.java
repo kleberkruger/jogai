@@ -5,7 +5,7 @@ import java.util.Collection;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
-public interface Repository<Entity, Id extends Serializable> {
+public interface Repository<Entity extends Entidade<? extends Id>, Id extends Serializable> {
 
     CompletableFuture<Entity> save(Entity entity);
 
