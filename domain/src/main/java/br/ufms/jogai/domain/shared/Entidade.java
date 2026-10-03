@@ -8,7 +8,7 @@ public class Entidade<ID extends Serializable> {
     protected final ID id;
 
     protected Entidade(ID id) {
-        this.id = Objects.requireNonNull(id, "ID não pode ser nulo");
+        this.id = Objects.requireNonNull(id, "O id não pode ser nulo");
     }
 
     public ID getId() {

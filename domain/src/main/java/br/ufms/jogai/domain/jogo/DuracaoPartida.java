@@ -30,10 +30,29 @@ public record DuracaoPartida(Duration minima, Duration maxima) {
     /**
      * Cria uma duração de partida com um valor estimado.
      *
+     * @param estimativa duração estimada em minutos
+     */
+    public DuracaoPartida(int estimativa) {
+        this(Duration.ofMinutes(estimativa));
+    }
+
+    /**
+     * Cria uma duração de partida com um valor estimado.
+     *
      * @param estimativa duração estimada
      */
     public DuracaoPartida(Duration estimativa) {
         this(estimativa, estimativa);
+    }
+
+    /**
+     * Representa a duração de uma partida, com duração mínima e máxima opcionais.
+     *
+     * @param minima duração mínima
+     * @param maxima duração máxima
+     */
+    public DuracaoPartida(int minima, int maxima) {
+        this(Duration.ofMinutes(minima), Duration.ofMinutes(maxima));
     }
 
     public Duration estimativa() {

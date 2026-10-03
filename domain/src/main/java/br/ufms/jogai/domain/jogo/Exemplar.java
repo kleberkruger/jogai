@@ -12,14 +12,15 @@ public class Exemplar extends Entidade<UUID> {
     private final JogoInfo jogo;
     private final UsuarioInfo proprietario;
     private EstadoConservacao estadoConservacao;
-    private final Instant dataCadastro;
     private String observacao;
+    private final Instant dataCadastro;
 
     private Exemplar(
             UUID id,
             JogoInfo jogoInfo,
             UsuarioInfo proprietarioInfo,
             EstadoConservacao estadoConservacao,
+            String observacao,
             Instant dataCadastro
     ) {
         super(id);
@@ -32,6 +33,7 @@ public class Exemplar extends Entidade<UUID> {
                 dataCadastro, "A data de cadastro não pode ser nula");
 
         setEstadoConservacao(estadoConservacao);
+        setObservacao(observacao);
     }
 
     public JogoInfo getJogoInfo() {
@@ -55,11 +57,8 @@ public class Exemplar extends Entidade<UUID> {
     }
 
     public void setEstadoConservacao(EstadoConservacao estadoConservacao) {
-        this.estadoConservacao = estadoConservacao;
-    }
-
-    public Instant getDataCadastro() {
-        return dataCadastro;
+        this.estadoConservacao = Objects.requireNonNull(
+                estadoConservacao, "O estado de conservação não pode ser nulo");
     }
 
     public String getObservacao() {
@@ -70,12 +69,24 @@ public class Exemplar extends Entidade<UUID> {
         this.observacao = observacao != null ? observacao.trim() : null;
     }
 
+    public Instant getDataCadastro() {
+        return dataCadastro;
+    }
+
     public static Exemplar create(
             JogoInfo jogoInfo,
             UsuarioInfo proprietarioInfo,
-            EstadoConservacao estadoConservacao
+            EstadoConservacao estadoConservacao,
+            String observacao
     ) {
-        return new Exemplar(UUID.randomUUID(), jogoInfo, proprietarioInfo, estadoConservacao, Instant.now());
+        return new Exemplar(
+                UUID.randomUUID(),
+                jogoInfo,
+                proprietarioInfo,
+                estadoConservacao,
+                observacao,
+                Instant.now()
+        );
     }
 
     public static Exemplar reconstitute(
@@ -83,8 +94,16 @@ public class Exemplar extends Entidade<UUID> {
             JogoInfo jogoInfo,
             UsuarioInfo proprietarioInfo,
             EstadoConservacao estadoConservacao,
+            String observacao,
             Instant dataCadastro
     ) {
-        return new Exemplar(id, jogoInfo, proprietarioInfo, estadoConservacao, dataCadastro);
+        return new Exemplar(
+                id,
+                jogoInfo,
+                proprietarioInfo,
+                estadoConservacao,
+                observacao,
+                dataCadastro
+        );
     }
 }

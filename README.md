@@ -204,9 +204,14 @@ Usuario
 Jogo
 Categoria
 Exemplar
+SolicitacaoEmprestimo
 Emprestimo
 ItemEmprestimo
 Reserva
+Devolucao
+ProblemaDevolucao
+AvaliacaoProprietario
+AvaliacaoTomador
 ```
 
 Também poderão ser utilizados **Value Objects**, enums e outras estruturas auxiliares quando forem apropriados.
@@ -346,6 +351,7 @@ Representa uma unidade física específica de um jogo.
 | id | Identificador | Sim | Identificador único |
 | codigo | Texto | Sim | Código único do exemplar |
 | jogoId | Identificador | Sim | Jogo ao qual pertence |
+| proprietarioId | Identificador | Sim | Usuário que empresta esta cópia |
 | dataCadastro | Data/Hora | Sim | Data de cadastro |
 | estadoConservacao | Enum | Sim | Estado físico |
 | status | Enum | Sim | Situação operacional |
@@ -402,37 +408,91 @@ Um exemplar pertence a exatamente um jogo.
 
 ---
 
-# 11. Entidade Emprestimo
+# 11. Solicitação e empréstimo entre pessoas
 
-Representa uma operação de empréstimo realizada por um usuário.
+O fluxo tem três registros distintos: **solicitação → empréstimo → devolução**. `SolicitacaoEmprestimo` registra um pedido e a decisão do proprietário. `Emprestimo` registra o acordo aceito e passa a controlar a posse e o prazo depois que os itens são entregues. `Devolucao` registra o recebimento dos itens. A solicitação pode ser recusada ou cancelada sem criar um empréstimo.
 
-Um empréstimo pode conter um ou mais exemplares.
+O empréstimo é um acordo entre **duas pessoas**: o proprietário do exemplar (quem empresta) e o tomador (quem recebe). Um empréstimo pode conter vários exemplares, mas todos devem pertencer ao mesmo proprietário. Itens de proprietários diferentes exigem solicitações e empréstimos separados.
 
-## Atributos
+## Entidade `SolicitacaoEmprestimo`
 
-| Atributo | Tipo | Obrigatório | Descrição |
+Essa classe é útil porque o pedido existe antes de o proprietário responder e pode terminar recusado ou cancelado. Não deve ser confundida com `Reserva`: reserva mantém o usuário em uma fila por um jogo ainda indisponível; solicitação pede exemplares concretos a um proprietário. Quando uma oferta da fila for aceita, ela pode originar uma solicitação para o exemplar oferecido.
+
+| Atributo | Tipo conceitual | Obrigatório | Descrição |
 |---|---|---:|---|
-| id | Identificador | Sim | Identificador único |
-| usuarioId | Identificador | Sim | Usuário responsável |
-| dataEmprestimo | Data/Hora | Sim | Momento do empréstimo |
-| dataPrevistaDevolucao | Data/Hora | Sim | Prazo para devolução |
-| dataDevolucao | Data/Hora | Não | Momento da conclusão |
-| status | Enum | Sim | Situação |
-| observacoes | Texto | Não | Observações |
+| id | Identificador | Sim | Identificador único do pedido |
+| tomadorId | Identificador | Sim | Usuário que pediu os exemplares |
+| proprietarioId | Identificador | Sim | Usuário que decide se empresta |
+| exemplarIds | Coleção de identificadores | Sim | Um ou mais exemplares do mesmo proprietário |
+| reservaId | Identificador | Não | Reserva que originou a solicitação, se houver |
+| dataSolicitacao | Data/Hora | Sim | Quando o pedido foi enviado |
+| dataLimiteResposta | Data/Hora | Não | Prazo para responder, se o fluxo usar expiração |
+| dataResposta | Data/Hora | Não | Quando o proprietário aceitou ou recusou |
+| status | Enum | Sim | Situação do pedido |
+| motivoRecusa | Texto | Não | Motivo informado ao recusar |
+| emprestimoId | Identificador | Não | Empréstimo criado após o aceite |
+| observacoes | Texto | Não | Mensagem ou acordo proposto |
 
-## Status
+Status:
 
 ```text
-ATIVO
-ATRASADO
-FINALIZADO
-CANCELADO
+PENDENTE   aguardando decisão do proprietário
+ACEITA     proprietário concordou; entrega ainda precisa ser confirmada
+RECUSADA   proprietário não aceitou
+CANCELADA  tomador retirou o pedido antes da entrega
+EXPIRADA  pedido expirou sem resposta, se houver prazo de resposta
 ```
+
+Um pedido aceito não significa que os itens já foram entregues. O `Emprestimo` resultante fica `AGUARDANDO_ENTREGA`; só a confirmação da entrega inicia o prazo. A solicitação permanece como histórico da decisão e referencia o empréstimo criado.
+
+## Entidade `Emprestimo`
+
+Representa o acordo aceito entre o proprietário e o tomador. Deve guardar referências estáveis (`UsuarioInfo` ou IDs) às duas pessoas e os itens aceitos. O empréstimo começa na entrega física confirmada, não quando o pedido é enviado ou aceito.
+
+## Prazo padrão
+
+O prazo padrão é de **7 dias corridos**, contados a partir da confirmação da entrega. O vencimento é calculado uma vez, nessa confirmação, e fica registrado no empréstimo. Uma futura configuração poderá mudar o prazo para novos empréstimos; não deve alterar retroativamente os já iniciados. Uma prorrogação, se vier a ser implementada, precisa ser aceita pelo proprietário antes do vencimento e atualizar o prazo registrado. Enquanto isso, não há prorrogação automática.
+
+Todos os itens de um empréstimo vencem na mesma data. Isso deixa a regra simples e previsível. A devolução, porém, é controlada item a item: o tomador pode devolver parte dos itens antes do vencimento, e os demais continuam pendentes sob o mesmo prazo. O empréstimo só fica finalizado quando todos os itens forem devolvidos ou tiverem uma resolução registrada e todas as ocorrências estiverem encerradas.
+
+Use `Instant` para os momentos de entrega e devolução e para o vencimento, armazenando os instantes em UTC e apresentando-os no fuso local. Assim, mudanças de fuso ou horário de verão não mudam o prazo calculado.
+
+### Atributos de `Emprestimo`
+
+| Atributo | Tipo conceitual | Obrigatório | Descrição |
+|---|---|---:|---|
+| id | Identificador | Sim | Identificador único |
+| proprietarioId | Identificador | Sim | Pessoa que empresta; deve ser proprietária de todos os exemplares do empréstimo |
+| tomadorId | Identificador | Sim | Pessoa que recebe os exemplares |
+| solicitacaoId | Identificador | Sim | Pedido que originou o acordo |
+| dataAceite | Data/Hora | Sim | Quando o proprietário aceitou a solicitação |
+| dataEmprestimo | Data/Hora | Não | Confirmação da entrega; ausente enquanto aguardando entrega |
+| dataPrevistaDevolucao | Data/Hora | Não | Vencimento calculado na entrega; ausente antes dela |
+| status | Enum | Sim | Estado do fluxo |
+| itens | Coleção de `ItemEmprestimo` | Sim | Exemplares incluídos no acordo |
+| observacoes | Texto | Não | Acordos ou informações gerais |
+
+`dataDevolucao` não deve ser um único campo no empréstimo: devoluções podem ocorrer em momentos diferentes para cada item. O histórico fica nos itens e nos eventos `Devolucao`.
+
+## Status de `Emprestimo`
+
+```text
+AGUARDANDO_ENTREGA  solicitação aceita, aguardando entrega física
+ATIVO               entrega confirmada e há itens pendentes dentro do prazo
+ATRASADO             há ao menos um item pendente após o vencimento
+AGUARDANDO_RESOLUCAO todos os itens foram recebidos, mas há problema ainda sem resolução
+FINALIZADO           todos os itens foram devolvidos/resolvidos e todas as ocorrências foram encerradas
+CANCELADO            acordo cancelado antes da entrega
+```
+
+`ATRASADO` pode ser calculado a partir do vencimento e dos itens pendentes, em vez de persistido, para evitar um status desatualizado. `AGUARDANDO_RESOLUCAO` aplica-se quando os itens já foram recebidos, mas há problema aberto ou contestado. O atraso de um item não apaga nem encerra o empréstimo.
 
 ### Relacionamentos
 
 ```text
-Usuario 1 ───── N Emprestimo
+Usuario (tomador) 1 ───── N SolicitacaoEmprestimo N ───── 1 Usuario (proprietário)
+SolicitacaoEmprestimo 1 ───── 0..1 Emprestimo
+Usuario (proprietário) 1 ───── N Emprestimo N ───── 1 Usuario (tomador)
 Emprestimo 1 ───── N ItemEmprestimo
 ```
 
@@ -440,49 +500,44 @@ Emprestimo 1 ───── N ItemEmprestimo
 
 # 12. Entidade ItemEmprestimo
 
-Representa a associação entre um empréstimo e um exemplar específico.
-
-Essa entidade é necessária porque um empréstimo pode conter vários exemplares.
+Representa um exemplar específico dentro de um acordo. O prazo é comum ao empréstimo, mas situação e devolução são acompanhadas individualmente. Isso permite receber dois jogos hoje e o terceiro depois sem perder o histórico.
 
 ## Atributos
 
-| Atributo | Tipo | Obrigatório |
-|---|---|---:|
-| id | Identificador | Sim |
-| emprestimoId | Identificador | Sim |
-| exemplarId | Identificador | Sim |
+| Atributo | Tipo conceitual | Obrigatório | Descrição |
+|---|---|---:|---|
+| id | Identificador | Sim | Identificador único do item |
+| emprestimoId | Identificador | Sim | Empréstimo ao qual pertence |
+| exemplarId | Identificador | Sim | Cópia física emprestada |
+| estadoNaEntrega | Enum | Sim | Estado de conservação registrado antes da entrega |
+| estadoNaDevolucao | Enum | Não | Estado observado no recebimento |
+| componentesEntregues | Coleção de textos/IDs | Sim | Peças e acessórios conferidos na entrega; serve de referência para a devolução |
+| componentesRecebidos | Coleção de textos/IDs | Não | Peças e acessórios conferidos no recebimento |
+| dataEfetivaDevolucao | Data/Hora | Não | Quando o proprietário recebeu o item |
+| status | Enum | Sim | Situação individual do item |
+| observacaoEntrega | Texto | Não | Condição, acessórios ou ressalvas na entrega |
+| observacaoDevolucao | Texto | Não | Problemas, peças faltantes ou divergências constatadas |
+| resolucao | Texto | Não | Acordo ou desfecho de extravio/dano, se houver |
 
-Relacionamentos:
+Status possíveis:
 
 ```text
-Emprestimo 1 ───── N ItemEmprestimo
-Exemplar 1 ───── N ItemEmprestimo
+PENDENTE      ainda está com o tomador; pode estar em dia ou atrasado
+DEVOLVIDO     recebido pelo proprietário
+EXTRAVIADO    perda confirmada e registrada, aguardando ou após resolução
 ```
 
-Um exemplar poderá aparecer em vários itens ao longo de sua história, mas **não poderá aparecer em dois empréstimos ativos simultaneamente**.
+Não marque como extraviado apenas porque venceu: nesse momento o item continua `PENDENTE` e aparece como atrasado. `EXTRAVIADO` exige confirmação/registro, preservando a diferença entre atraso e perda. Um item devolvido com dano continua `DEVOLVIDO`; o dano é registrado pelo estado e pela observação, e o exemplar pode ser encaminhado para manutenção. Para jogos com muitas peças, compare `componentesEntregues` e `componentesRecebidos`; as peças ausentes dão origem a um `ProblemaDevolucao`.
 
-Exemplo:
+Um exemplar pode participar de vários itens ao longo do tempo, mas nunca de dois empréstimos ativos ao mesmo tempo.
 
-```text
-Empréstimo #100
-Usuário: João
-
-Itens:
-
-Item #1 → Catan #001
-Item #2 → Azul #002
-Item #3 → Dixit #001
-```
+Exemplo: João recebe de Maria dois exemplares no dia 1º. Ambos vencem no dia 8. João devolve um no dia 6 e o outro no dia 10: o primeiro item é concluído no dia 6; o empréstimo permanece atrasado até a devolução do segundo.
 
 ---
 
 # 13. Entidade Reserva
 
-Representa o interesse de um usuário em utilizar determinado jogo quando não houver exemplares disponíveis.
-
-A reserva deverá ser feita para o **Jogo**, e não para um exemplar específico.
-
-Isso é importante porque qualquer exemplar disponível daquele jogo poderá atender a reserva.
+Representa o interesse de um usuário em pegar emprestado um jogo quando não houver exemplar disponível para iniciar um empréstimo. A reserva é feita para o **Jogo**, não para uma cópia física; quando surgir uma possibilidade, o proprietário e o usuário ainda precisam confirmar o empréstimo entre si. A reserva não cria por si só um empréstimo nem transfere a posse do exemplar.
 
 ## Atributos
 
@@ -491,19 +546,26 @@ Isso é importante porque qualquer exemplar disponível daquele jogo poderá ate
 | id | Identificador | Sim | Identificador único |
 | usuarioId | Identificador | Sim | Usuário que realizou a reserva |
 | jogoId | Identificador | Sim | Jogo reservado |
+| exemplarOfertadoId | Identificador | Não | Cópia específica oferecida ao usuário |
+| solicitacaoId | Identificador | Não | Solicitação criada a partir da oferta aceita |
+| emprestimoId | Identificador | Não | Empréstimo que resultou da solicitação aceita |
 | dataReserva | Data/Hora | Sim | Momento da reserva |
 | status | Enum | Sim | Situação |
-| dataAtendimento | Data/Hora | Não | Momento em que foi atendida |
+| posicao | Inteiro calculado | Não | Posição atual na fila; deve ser recalculada pela ordem da fila, não tratada como identidade permanente |
+| dataOferta | Data/Hora | Não | Quando uma oportunidade foi comunicada ao usuário |
+| dataExpiracaoOferta | Data/Hora | Não | Limite para aceitar a oportunidade |
+| dataAtendimento | Data/Hora | Não | Quando a entrega confirmada inicia o empréstimo |
 | dataCancelamento | Data/Hora | Não | Momento do cancelamento |
 | observacoes | Texto | Não | Observações |
 
 ## Status
 
 ```text
-ATIVA
-ATENDIDA
-CANCELADA
-EXPIRADA
+ATIVA               aguardando na fila
+OFERTA_PENDENTE     oportunidade comunicada, aguardando resposta
+ATENDIDA            entrega confirmada e empréstimo correspondente iniciado
+CANCELADA           cancelada pelo usuário ou pela equipe
+EXPIRADA             oportunidade não aceita no prazo
 ```
 
 ### Relacionamentos
@@ -513,73 +575,138 @@ Usuario 1 ───── N Reserva
 Jogo 1 ───── N Reserva
 ```
 
----
-
-# 14. Modelo de Relacionamentos Completo
-
-O modelo conceitual do sistema deverá ser semelhante a:
-
-```text
-                         ┌──────────────┐
-                         │   Categoria  │
-                         └──────┬───────┘
-                                │
-                              N │
-                                │ N
-                         ┌──────┴───────┐
-                         │     Jogo      │
-                         └──────┬───────┘
-                              1 │
-                                │
-                              N │
-                         ┌──────┴───────┐
-                         │   Exemplar   │
-                         └──────┬───────┘
-                                │
-                              1 │
-                                │ N
-                    ┌───────────┴───────────┐
-                    │    ItemEmprestimo     │
-                    └───────────┬───────────┘
-                              N │
-                                │ 1
-                         ┌──────┴───────┐
-                         │  Emprestimo  │
-                         └──────┬───────┘
-                              N │
-                                │ 1
-                         ┌──────┴───────┐
-                         │    Usuario   │
-                         └──────┬───────┘
-                              1 │
-                                │ N
-                         ┌──────┴───────┐
-                         │    Reserva   │
-                         └──────┬───────┘
-                              N │
-                                │ 1
-                         ┌──────┴───────┐
-                         │     Jogo     │
-                         └──────────────┘
-```
-
-De forma simplificada:
-
-```text
-Usuario
- ├── Emprestimos
- │      └── Itens
- │             └── Exemplar
- │                    └── Jogo
- │
- └── Reservas
-        └── Jogo
-               └── Categorias
-```
+Uma oferta deve informar qual exemplar/proprietário está disponível. Durante a janela da oferta, o exemplar fica `RESERVADO` para aquela pessoa e não pode ser oferecido a outra. Sugestão para o projeto: o primeiro usuário da fila recebe **48 horas** para responder. Se aceitar, cria-se uma `SolicitacaoEmprestimo` vinculada à reserva; após o aceite do proprietário, cria-se o empréstimo. A reserva passa a `ATENDIDA` somente quando a entrega confirmada inicia o empréstimo e seu prazo de 7 dias. Se não aceitar em 48 horas, a oferta expira e passa para a próxima pessoa; se não houver mais reservas, o exemplar volta a `DISPONIVEL`. Uma reserva expirada pode ser recriada pelo usuário se ainda tiver interesse.
 
 ---
 
-# 15. Regras de Negócio
+# 14. Devolução e avaliação
+
+## Devolução parcial ou completa
+
+`Devolucao` representa um recebimento feito pelo proprietário. Um evento pode registrar um ou mais itens recebidos na mesma ocasião, e um mesmo empréstimo pode ter vários eventos de devolução. Para cada item recebido, registra-se a data efetiva, a condição constatada e eventuais observações. Isso é importante porque cada exemplar pode voltar em uma condição diferente.
+
+### Atributos de `Devolucao`
+
+| Atributo | Tipo conceitual | Obrigatório | Descrição |
+|---|---|---:|---|
+| id | Identificador | Sim | Identificador do evento de recebimento |
+| emprestimoId | Identificador | Sim | Empréstimo ao qual a devolução pertence |
+| recebidoPorId | Identificador | Sim | Proprietário que confirma o recebimento |
+| dataHora | Data/Hora | Sim | Momento do recebimento |
+| itens | Coleção de itens devolvidos | Sim | Um ou mais `ItemEmprestimo` recebidos nesse evento |
+| observacoes | Texto | Não | Observações gerais do recebimento |
+
+O detalhe de condição e dano pertence também ao `ItemEmprestimo`, para que o estado final de cada exemplar continue consultável. `Devolucao` não deve guardar notas de avaliação: receber um item e avaliar a outra pessoa são ações distintas.
+
+## Entidade `ProblemaDevolucao`
+
+Registra um problema encontrado na devolução de um item, como peça faltante, dano, acessório ausente ou divergência entre as condições registradas na entrega e no recebimento. O registro preserva o relato e o acordo sem decidir automaticamente que uma pessoa é culpada nem aplicar uma cobrança automática.
+
+| Atributo | Tipo conceitual | Obrigatório | Descrição |
+|---|---|---:|---|
+| id | Identificador | Sim | Identificador da ocorrência |
+| itemEmprestimoId | Identificador | Sim | Item específico relacionado ao problema |
+| devolucaoId | Identificador | Sim | Evento em que o problema foi observado |
+| relatadoPorId | Identificador | Sim | Participante que registrou o problema |
+| tipo | Enum | Sim | `PECA_FALTANTE`, `DANO`, `ACESSORIO_FALTANTE` ou `OUTRO` |
+| componentesFaltantes | Coleção de textos/IDs | Não | Peças ou acessórios ausentes, comparados à lista da entrega |
+| descricao | Texto | Sim | O que foi observado; pode incluir evidências/referências a imagens |
+| dataRegistro | Data/Hora | Sim | Quando a ocorrência foi registrada |
+| respostaTomador | Texto | Não | Resposta ou contestação do tomador |
+| status | Enum | Sim | `ABERTO`, `CONTESTADO` ou `RESOLVIDO` |
+| resolucao | Texto | Não | Acordo alcançado ou decisão de mediação |
+| resolvidoEm | Data/Hora | Não | Quando as partes ou a mediação encerraram a ocorrência |
+
+Uma ocorrência aberta deve ser comunicada ao tomador, que pode responder e anexar contexto. As pessoas podem combinar, por exemplo, a devolução da peça, a reposição por peça equivalente, o reparo do dano ou outra solução adequada. Se discordarem, a ocorrência permanece `CONTESTADO` até uma mediação definida pela comunidade. Registre a solução; não invente uma multa automática. O exemplar pode ficar `MANUTENCAO` ou `INDISPONIVEL` enquanto o dano afetar seu uso seguro ou completo.
+
+O empréstimo não fica `FINALIZADO` enquanto houver ocorrência sem resolução. Depois que todas as peças voltarem ou a solução acordada for cumprida e registrada, marque a ocorrência como `RESOLVIDO`; o empréstimo poderá ser finalizado quando todos os seus itens e ocorrências estiverem resolvidos.
+
+## Fluxo completo: do pedido às avaliações
+
+1. **Solicitação:** o tomador escolhe um ou mais exemplares disponíveis do mesmo proprietário e envia `SolicitacaoEmprestimo` em `PENDENTE`. Se a origem for uma reserva, o pedido referencia `reservaId` e o exemplar ofertado.
+2. **Decisão:** o proprietário aceita ou recusa. Na recusa, informa opcionalmente o motivo e o pedido termina sem criar empréstimo. No aceite, cria-se `Emprestimo` em `AGUARDANDO_ENTREGA` e a solicitação guarda seu `emprestimoId`.
+3. **Entrega:** proprietário e tomador conferem condição física, peças e acessórios. Registra-se a condição e `componentesEntregues` de cada `ItemEmprestimo`; confirmada a entrega, o empréstimo passa a `ATIVO`, grava `dataEmprestimo` e calcula `dataPrevistaDevolucao` para sete dias corridos depois. Os exemplares passam a `EMPRESTADO`.
+4. **Uso e prazo:** itens podem voltar separadamente, mas todos têm o mesmo vencimento. Item ainda pendente depois do vencimento fica atrasado e impede o tomador de iniciar novo empréstimo. Atraso não marca automaticamente o jogo como perdido.
+5. **Devolução e conferência:** o proprietário registra cada recebimento em `Devolucao`, confere condição e lista `componentesRecebidos` do item. Se tudo estiver presente e em condição aceitável, o item fica `DEVOLVIDO`. Se houver dano ou peça faltante, o item ainda fica registrado como recebido, e cria-se `ProblemaDevolucao` para documentar o ocorrido.
+6. **Resposta e solução do problema:** o tomador recebe o relato e pode responder ou contestar. As partes combinam a devolução da peça, reposição equivalente, reparo ou outra solução aceita; divergências seguem para mediação da comunidade. Registra-se o resultado em `resolucao`. Não há cobrança ou penalidade automática. Enquanto não houver solução, a ocorrência continua aberta/contestada e o empréstimo fica `AGUARDANDO_RESOLUCAO` depois que os itens tiverem sido recebidos. O exemplar pode ficar fora de circulação.
+7. **Finalização:** o empréstimo passa a `FINALIZADO` quando cada item foi devolvido ou teve extravio formalmente resolvido e não há `ProblemaDevolucao` aberto ou contestado. A finalização preserva o histórico, inclusive danos e soluções.
+8. **Avaliações recíprocas:** depois da finalização, cada pessoa pode avaliar a outra separadamente. O proprietário avalia o tomador em `AvaliacaoProprietario`; o tomador avalia o proprietário em `AvaliacaoTomador`. Cada avaliação tem nota de 1 a 5 e comentário opcional sobre a experiência ou os problemas ocorridos. Cada participante pode enviar uma avaliação por empréstimo; uma avaliação não depende da outra e não altera o status final.
+
+### Exemplo: peça de jogo perdida
+
+Na entrega, proprietário e tomador registram que o jogo contém 100 peças, listando ou identificando as peças conferidas. Na devolução, faltam duas peças. O proprietário registra o recebimento e abre `ProblemaDevolucao` com as duas peças ausentes e uma descrição. O tomador pode confirmar o ocorrido ou contestar, por exemplo, informando que as peças já faltavam na entrega. As partes conferem o registro inicial e combinam como resolver: devolver as peças, conseguir reposições compatíveis, reparar/substituir o exemplar ou aceitar outra solução. A decisão e seu cumprimento ficam registrados. Até a solução, a ocorrência fica aberta ou contestada, o empréstimo não finaliza e o exemplar pode ficar indisponível. Resolvido o problema, finaliza-se o empréstimo e ambos podem registrar suas notas e comentários.
+
+### Atraso, extravio e dano
+
+- Se o prazo vencer e um item ainda não tiver sido recebido, ele permanece `PENDENTE`, passa a constar como atrasado e o empréstimo fica `ATRASADO` enquanto houver item pendente vencido. O sistema pode notificar as duas pessoas. O tomador não pode iniciar novos empréstimos enquanto tiver item atrasado ou extravio sem resolução.
+- Atraso não equivale automaticamente a perda. Se as partes confirmarem que o item não será devolvido, registra-se `EXTRAVIADO` e a resolução acordada em `resolucao`; não se apaga o item nem seu histórico.
+- Se o item for devolvido com problema, registra-se `estadoNaDevolucao`, `componentesRecebidos`, `observacaoDevolucao` e a data. O proprietário pode alterar o estado atual do `Exemplar` e colocá-lo em manutenção. Não se deve sobrescrever os dados da entrega, que são a condição de referência.
+- Quando todos os itens forem devolvidos ou tiverem resolução registrada e todas as ocorrências estiverem encerradas, o empréstimo passa a `FINALIZADO`. Um exemplar com dano pode continuar indisponível para novos empréstimos até ser reparado.
+
+## Avaliações recíprocas
+
+O sistema deve permitir que as duas pessoas avaliem a experiência, mas sem misturar a avaliação com a devolução física. Após o empréstimo ser finalizado, cada participante pode enviar uma avaliação por empréstimo. As avaliações são independentes e opcionais; a falta de uma delas não impede o encerramento. Uma avaliação não deve ser editada depois de publicada, salvo fluxo administrativo explícito.
+
+Para evitar ambiguidade nos nomes atuais:
+
+- `AvaliacaoProprietario`: avaliação escrita pelo proprietário sobre o tomador;
+- `AvaliacaoTomador`: avaliação escrita pelo tomador sobre o proprietário.
+
+As duas classes podem compartilhar os mesmos campos, mas são registros separados para deixar explícita a direção da avaliação.
+
+### Atributos de `AvaliacaoProprietario`
+
+Escrita pelo proprietário para avaliar o tomador:
+
+| Atributo | Tipo conceitual | Obrigatório | Descrição |
+|---|---|---:|---|
+| id | Identificador | Sim | Identificador da avaliação |
+| emprestimoId | Identificador | Sim | Empréstimo que está sendo avaliado |
+| avaliadorId | Identificador | Sim | Proprietário registrado no empréstimo |
+| avaliadoId | Identificador | Sim | Tomador registrado no empréstimo |
+| nota | Inteiro de 1 a 5 | Sim | Nota da experiência |
+| comentario | Texto | Não | Comentário sobre a experiência, com limite de tamanho |
+| dataAvaliacao | Data/Hora | Sim | Quando foi publicada |
+
+### Atributos de `AvaliacaoTomador`
+
+Escrita pelo tomador para avaliar o proprietário:
+
+| Atributo | Tipo conceitual | Obrigatório | Descrição |
+|---|---|---:|---|
+| id | Identificador | Sim | Identificador da avaliação |
+| emprestimoId | Identificador | Sim | Empréstimo que está sendo avaliado |
+| avaliadorId | Identificador | Sim | Tomador registrado no empréstimo |
+| avaliadoId | Identificador | Sim | Proprietário registrado no empréstimo |
+| nota | Inteiro de 1 a 5 | Sim | Nota da experiência |
+| comentario | Texto | Não | Comentário sobre a experiência, com limite de tamanho |
+| dataAvaliacao | Data/Hora | Sim | Quando foi publicada |
+
+O sistema deve permitir no máximo uma avaliação de cada direção por empréstimo, confirmar que as pessoas são as partes do acordo e só aceitar publicação depois da finalização. Comentários podem mencionar problemas já registrados, mas o relato factual, as respostas e a solução pertencem a `ProblemaDevolucao`, não à avaliação.
+
+---
+
+# 15. Modelo de Relacionamentos Completo
+
+Relacionamentos principais:
+
+```text
+Jogo N ───── N Categoria
+Jogo 1 ───── N Exemplar
+Exemplar 1 ───── N ItemEmprestimo (histórico; no máximo um ativo)
+Emprestimo 1 ───── N ItemEmprestimo
+Usuario (proprietário) 1 ───── N Emprestimo N ───── 1 Usuario (tomador)
+SolicitacaoEmprestimo 1 ───── 0..1 Emprestimo
+Emprestimo 1 ───── N Devolucao
+ItemEmprestimo 1 ───── N ProblemaDevolucao
+Emprestimo 1 ───── 0..1 AvaliacaoProprietario
+Emprestimo 1 ───── 0..1 AvaliacaoTomador
+Usuario 1 ───── N Reserva N ───── 1 Jogo
+```
+
+---
+
+# 16. Regras de Negócio
 
 ## RN01 — Cadastro de usuário
 
@@ -616,17 +743,15 @@ O usuário atingiu seu limite.
 
 ## RN04 — Empréstimos atrasados
 
-Um empréstimo ativo será considerado atrasado quando a data atual ultrapassar sua data prevista de devolução.
+Um empréstimo será considerado atrasado quando a data atual ultrapassar seu vencimento e existir item `PENDENTE`.
 
-Um usuário com pelo menos um empréstimo atrasado não poderá realizar novos empréstimos.
+Um usuário com ao menos um item atrasado ou um extravio ainda sem resolução não poderá iniciar novos empréstimos.
 
 ---
 
 ## RN05 — Prazo
 
-O prazo padrão de empréstimo será de **7 dias**.
-
-A regra deverá ser implementada de forma que o prazo possa ser alterado futuramente sem modificar diversas partes do sistema.
+O prazo padrão é de **7 dias corridos**, contado da confirmação da entrega. Todos os itens do mesmo empréstimo compartilham esse vencimento; cada item pode ser devolvido separadamente. O vencimento gravado não muda retroativamente quando a configuração mudar.
 
 ---
 
@@ -644,33 +769,31 @@ Um exemplar não poderá estar associado a mais de um empréstimo ativo.
 
 ## RN08 — Empréstimo
 
-Ao realizar um empréstimo:
+Somente uma solicitação aceita pode originar um empréstimo. Depois do aceite, o empréstimo aguarda a entrega; ao confirmar a entrega, inicia-se o prazo e registra-se a posse:
 
 ```text
-Exemplar DISPONIVEL
-        ↓
-Exemplar EMPRESTADO
+Exemplar DISPONIVEL → empréstimo confirmado → Exemplar EMPRESTADO
 ```
+
+Um empréstimo agrupa somente exemplares do mesmo proprietário. Itens de proprietários diferentes exigem acordos separados. O tomador e o proprietário devem estar ativos.
 
 ---
 
 ## RN09 — Devolução
 
-Ao devolver um exemplar:
+Cada exemplar pode ser devolvido individualmente. Ao receber um item:
 
 ```text
-Exemplar EMPRESTADO
-        ↓
-Exemplar DISPONIVEL
+Exemplar EMPRESTADO → recebimento confirmado → disponível, reservado ou em manutenção
 ```
 
-Entretanto, se existir uma reserva ativa para o jogo, o exemplar deverá ser direcionado para atendimento da reserva.
+Registra-se um evento `Devolucao`, a data efetiva, condição e peças recebidas de cada item. O empréstimo só finaliza depois que todos os itens forem devolvidos ou extraviados com resolução registrada e todas as ocorrências estiverem resolvidas.
 
 ---
 
 ## RN10 — Reserva
 
-Um usuário poderá reservar um jogo quando não existir exemplar disponível.
+Um usuário poderá reservar um jogo quando não houver exemplar disponível. Reserva é interesse em uma cópia, não empréstimo nem garantia de entrega; a pessoa proprietária e o tomador ainda confirmam o acordo.
 
 ---
 
@@ -707,20 +830,20 @@ A ordem será:
 Quando um exemplar de um jogo for devolvido e existir uma reserva ativa:
 
 ```text
-Devolução
+Exemplar fica disponível
     ↓
-Existe reserva?
+Existe reserva ativa para o jogo?
     ↓
-   SIM
+   SIM → marcar exemplar como RESERVADO e oferecer ao primeiro da fila por 48 horas
     ↓
-Selecionar primeira reserva
+Usuário aceita → criar solicitação
     ↓
-Atender reserva
+Proprietário aceita → empréstimo AGUARDANDO_ENTREGA
     ↓
-Disponibilizar exemplar ao usuário
+Entrega confirmada → iniciar empréstimo e marcar reserva como atendida
 ```
 
-A implementação poderá escolher como representar o período em que o exemplar fica reservado para o usuário, desde que o comportamento seja consistente com o domínio.
+Se a oferta não for aceita em 48 horas, expira e passa para a próxima reserva. Sem outras reservas, o exemplar volta a `DISPONIVEL`. A fila é cronológica. O prazo de empréstimo começa apenas na entrega confirmada, não na criação da reserva, da solicitação nem na oferta.
 
 ---
 
@@ -752,9 +875,7 @@ não poderá ser emprestado.
 
 ## RN16 — Danos
 
-Durante uma devolução, o estado de conservação do exemplar deverá poder ser atualizado.
-
-Caso o exemplar esteja danificado, poderá ser encaminhado para manutenção.
+Na retirada e no recebimento registra-se o estado de conservação separadamente. Se um item voltar danificado, registra-se o dano na devolução, atualiza-se o estado atual do exemplar e ele pode ser encaminhado para manutenção. Nunca substituir o estado observado na entrega.
 
 ---
 
@@ -774,7 +895,31 @@ Isso é especialmente importante para preservar histórico.
 
 ---
 
-# 16. Casos de Uso
+## RN19 — Extravio
+
+Um item vencido e não recebido continua pendente e atrasado; não é automaticamente considerado perdido. Só passa a `EXTRAVIADO` quando a perda for confirmada e registrada, junto de uma resolução acordada pelas pessoas envolvidas. Um extravio sem resolução mantém o empréstimo aberto e bloqueia novos empréstimos para o tomador. O histórico do item e do empréstimo é mantido.
+
+---
+
+## RN20 — Avaliações
+
+Depois que o empréstimo for finalizado, proprietário e tomador podem avaliar um ao outro, cada um uma vez por empréstimo, com nota de 1 a 5 e comentário opcional. A avaliação é opcional e não altera o status do empréstimo. As avaliações devem registrar autor, destinatário e data.
+
+---
+
+## RN21 — Solicitação
+
+O pedido deve ser registrado antes da decisão do proprietário. Somente o proprietário do exemplar pode aceitá-lo ou recusá-lo. Uma recusa ou cancelamento antes da entrega não cria um empréstimo ativo. Solicitações aceitas são preservadas como histórico e vinculadas ao empréstimo resultante.
+
+---
+
+## RN22 — Peças faltantes e danos
+
+Na entrega, registrar condição e peças/acessórios conferidos por exemplar. Na devolução, registrar a condição observada e as peças recebidas. Diferenças devem criar `ProblemaDevolucao`, notificar o tomador e permitir resposta/contestação. Até acordo ou mediação registrado, o empréstimo não pode ser finalizado e o exemplar pode ficar indisponível. Não aplicar cobrança automática: registrar o reparo, reposição ou outro acordo aceito.
+
+---
+
+# 17. Casos de Uso
 
 O sistema deverá implementar, no mínimo, os seguintes casos de uso.
 
@@ -837,13 +982,30 @@ Consultar status
 ## Empréstimos
 
 ```text
-Realizar empréstimo
+Criar solicitação de empréstimo
+Aceitar ou recusar solicitação
+Cancelar solicitação antes da entrega
+Confirmar entrega e iniciar prazo do empréstimo
 Consultar empréstimo
 Listar empréstimos ativos
 Listar empréstimos atrasados
 Consultar histórico
-Devolver exemplar
-Finalizar empréstimo
+Registrar devolução parcial ou completa
+Registrar dano ou extravio e resolução
+Finalizar empréstimo quando todos os itens estiverem resolvidos
+Avaliar proprietário ou tomador após finalização
+```
+
+## Devoluções e problemas
+
+```text
+Registrar recebimento total ou parcial
+Conferir peças e acessórios devolvidos
+Relatar dano ou peça faltante
+Responder ou contestar uma ocorrência
+Registrar acordo ou resultado de mediação
+Colocar exemplar danificado em manutenção
+Consultar histórico de ocorrências do exemplar e do empréstimo
 ```
 
 ---
@@ -858,11 +1020,12 @@ Listar reservas do usuário
 Listar reservas do jogo
 Consultar posição na fila
 Atender reserva
+Responder a uma oferta de exemplar
 ```
 
 ---
 
-# 17. Consultas e Informações do Sistema
+# 18. Consultas e Informações do Sistema
 
 A aplicação deverá disponibilizar informações úteis para o usuário.
 
@@ -920,7 +1083,7 @@ Reservas ativas
 
 ---
 
-# 18. Camada Domain
+# 19. Camada Domain
 
 O módulo `domain` representa o núcleo conceitual do sistema.
 
@@ -951,8 +1114,13 @@ domain
 │   └── EstadoConservacao
 │
 ├── emprestimo
+│   ├── SolicitacaoEmprestimo
 │   ├── Emprestimo
 │   ├── ItemEmprestimo
+│   ├── Devolucao
+│   ├── ProblemaDevolucao
+│   ├── AvaliacaoProprietario
+│   ├── AvaliacaoTomador
 │   └── StatusEmprestimo
 │
 └── reserva
@@ -964,7 +1132,7 @@ O domínio deverá evitar dependências de infraestrutura.
 
 ---
 
-# 19. Camada Application
+# 20. Camada Application
 
 A camada `application` deverá implementar os casos de uso.
 
@@ -985,22 +1153,21 @@ Cada caso de uso deverá coordenar as operações necessárias.
 Por exemplo:
 
 ```text
-RealizarEmprestimo
+SolicitarEmprestimo
 
-1. Buscar usuário
-2. Validar usuário
-3. Verificar empréstimos atrasados
-4. Verificar limite
-5. Buscar exemplares
-6. Validar disponibilidade
-7. Criar empréstimo
-8. Alterar estado dos exemplares
-9. Persistir
+1. Buscar tomador, proprietário e exemplares solicitados
+2. Validar usuários, limite e pendências do tomador
+3. Validar que os exemplares estão disponíveis e pertencem ao mesmo proprietário
+4. Criar `SolicitacaoEmprestimo` em `PENDENTE`
+5. Notificar o proprietário
+6. Se recusada, preservar a decisão e encerrar sem empréstimo
+7. Se aceita, criar `Emprestimo` em `AGUARDANDO_ENTREGA`
+8. Na confirmação da entrega, registrar condição e peças, iniciar o prazo e atualizar os exemplares
 ```
 
 ---
 
-# 20. Camada Data
+# 21. Camada Data
 
 A camada `data` será responsável pela infraestrutura de persistência.
 
@@ -1019,7 +1186,7 @@ O acesso ao Firebase deverá ficar restrito a essa camada ou às abstrações de
 
 ---
 
-# 21. Camada Presentation
+# 22. Camada Presentation
 
 A camada de apresentação será desenvolvida em Kotlin utilizando Compose Multiplatform.
 
@@ -1055,7 +1222,7 @@ A tela deverá solicitar a operação ao caso de uso, e apresentar o resultado.
 
 ---
 
-# 22. Exemplo de Fluxo Completo
+# 23. Exemplo de Fluxo Completo
 
 Considere o seguinte cenário:
 
@@ -1076,7 +1243,7 @@ O exemplar está:
 DISPONIVEL
 ```
 
-João solicita um empréstimo.
+João envia uma solicitação ao proprietário do exemplar.
 
 O fluxo deverá ser:
 
@@ -1085,21 +1252,21 @@ Compose UI
     ↓
 ViewModel
     ↓
-RealizarEmprestimo
+SolicitarEmprestimo
     ↓
-Validar usuário
+Validar tomador, proprietário e exemplar
     ↓
-Verificar limite
+Criar SolicitacaoEmprestimo (PENDENTE)
     ↓
-Verificar atrasos
+Proprietário aceita (ou recusa)
     ↓
-Verificar exemplar
+Criar Emprestimo (AGUARDANDO_ENTREGA)
     ↓
-Criar Emprestimo
+Confirmar entrega e registrar peças/estado
     ↓
-Criar ItemEmprestimo
+Iniciar prazo de 7 dias
     ↓
-Alterar Exemplar
+Alterar Exemplar para EMPRESTADO
     ↓
 Repository
     ↓
@@ -1116,9 +1283,11 @@ Empréstimo:
 ATIVO
 ```
 
+Na devolução, o proprietário confere cada exemplar e seus componentes. Uma peça faltante gera `ProblemaDevolucao`; o tomador responde e as partes registram o acordo ou a mediação. Resolvidos todos os itens e problemas, o empréstimo fica `FINALIZADO`. Então cada usuário pode registrar sua avaliação recíproca, com nota e comentário opcional.
+
 ---
 
-# 23. Testes
+# 24. Testes
 
 Deverão ser desenvolvidos testes automatizados para as principais regras de negócio.
 
@@ -1127,6 +1296,10 @@ No mínimo, deverão ser testados cenários como:
 ### Empréstimo
 
 ```text
+Solicitação pendente não cria empréstimo ativo.
+Somente o proprietário pode aceitar ou recusar sua solicitação.
+Solicitação recusada não altera o status do exemplar para emprestado.
+Aceite cria empréstimo aguardando entrega; a entrega inicia os 7 dias.
 Usuário ativo consegue emprestar.
 Usuário bloqueado não consegue emprestar.
 Usuário inativo não consegue emprestar.
@@ -1140,9 +1313,17 @@ Exemplar emprestado não pode ser emprestado novamente.
 
 ```text
 Exemplar emprestado pode ser devolvido.
-Exemplar disponível não pode ser devolvido.
-Exemplar danificado pode ser encaminhado para manutenção.
-Devolução pode ativar o atendimento de uma reserva.
+Item de um empréstimo ativo pode ser devolvido parcialmente.
+Item já devolvido não pode ser devolvido duas vezes.
+Devolução registra a condição de cada item sem apagar a condição da entrega.
+Devolução com dano pode encaminhar o exemplar para manutenção.
+Diferença entre peças entregues e recebidas cria ocorrência por item.
+Tomador pode responder ou contestar uma ocorrência.
+Empréstimo com ocorrência aberta ou contestada não pode ser finalizado.
+Empréstimo só finaliza quando todos os itens forem devolvidos/resolvidos e os problemas encerrados.
+Item vencido não recebido continua pendente e marca o empréstimo como atrasado.
+Extravio confirmado fica registrado e exige resolução.
+Devolução pode gerar uma oferta ao primeiro usuário da fila de reserva.
 ```
 
 ### Reserva
@@ -1152,13 +1333,26 @@ Usuário pode reservar jogo indisponível.
 Usuário não pode criar reserva duplicada.
 Reserva pode ser cancelada.
 Reservas são atendidas por ordem cronológica.
+Oferta de reserva expira depois de 48 horas sem resposta.
+Prazo do empréstimo começa na confirmação da entrega, não na reserva.
+```
+
+### Avaliações
+
+```text
+Cada participante pode avaliar o outro uma vez após o empréstimo ser finalizado.
+Não se pode avaliar alguém que não participou do empréstimo.
+Avaliação exige nota de 1 a 5 e registra autor, destinatário e data.
+Avaliação é opcional e não impede a finalização do empréstimo.
+Avaliação de proprietário avalia o tomador; avaliação de tomador avalia o proprietário.
+Problemas factuais são registrados em ocorrência, não apenas no comentário da avaliação.
 ```
 
 Os testes de domínio e aplicação deverão ser capazes de executar sem depender da interface gráfica.
 
 ---
 
-# 24. Requisitos de Qualidade
+# 25. Requisitos de Qualidade
 
 Além dos requisitos funcionais, a aplicação deverá observar os seguintes requisitos arquiteturais.
 
@@ -1188,7 +1382,7 @@ A arquitetura deverá permitir a evolução da camada de apresentação para dif
 
 ---
 
-# 25. Possíveis Evoluções
+# 26. Possíveis Evoluções
 
 Após a implementação dos requisitos obrigatórios, poderão ser adicionadas funcionalidades como:
 
@@ -1211,7 +1405,7 @@ Essas funcionalidades deverão ser utilizadas, quando aplicável, para demonstra
 
 ---
 
-# 26. Resultado Esperado
+# 27. Resultado Esperado
 
 Ao final do projeto, deverá existir uma aplicação funcional capaz de administrar uma coleção de jogos de tabuleiro e controlar todo o processo de empréstimo e reserva.
 

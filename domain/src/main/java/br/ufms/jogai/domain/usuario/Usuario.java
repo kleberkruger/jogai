@@ -1,5 +1,6 @@
 package br.ufms.jogai.domain.usuario;
 
+import br.ufms.jogai.domain.AI.reserva.Reserva;
 import br.ufms.jogai.domain.shared.Entidade;
 import br.ufms.jogai.domain.util.Validar;
 

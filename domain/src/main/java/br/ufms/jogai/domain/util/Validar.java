@@ -6,8 +6,23 @@ import java.time.Year;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class Validar {
+
+    public static <T> T notNull(T object, String mensagem) {
+        if (object == null) {
+            throw new IllegalArgumentException(mensagem);
+        }
+        return object;
+    }
+
+    public static <T, E extends RuntimeException> T require(T object, Supplier<E> exceptionSupplier) {
+        if (object == null) {
+            throw exceptionSupplier.get();
+        }
+        return object;
+    }
 
     /**
      * Valida o nome de uma pessoa física.

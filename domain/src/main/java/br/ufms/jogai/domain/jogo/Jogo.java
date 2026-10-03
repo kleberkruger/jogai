@@ -5,11 +5,7 @@ import br.ufms.jogai.domain.util.Validar;
 
 import java.time.Duration;
 import java.time.Year;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 public class Jogo extends Entidade<UUID> {
     private String nome;
@@ -88,7 +84,7 @@ public class Jogo extends Entidade<UUID> {
     }
 
     void setNumeroJogadores(NumeroJogadores numeroJogadores) {
-        this.numeroJogadores = numeroJogadores == null ? new NumeroJogadores() : numeroJogadores;
+        this.numeroJogadores = Validar.notNull(numeroJogadores, "O número de jogadores não pode ser nulo");
     }
 
     public FaixaEtaria getFaixaEtaria() {
@@ -189,5 +185,102 @@ public class Jogo extends Entidade<UUID> {
 
     public void inativar() {
         this.ativo = false;
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static Builder create() {
+        return new Builder(UUID.randomUUID(), true);
+    }
+
+    public static Builder reconstitute(UUID id, boolean ativo) {
+        return new Builder(id, ativo);
+    }
+
+    public static class Builder {
+
+        private UUID id;
+        private String nome;
+        private String editora;
+        private Year anoLancamento;
+        private NumeroJogadores numeroJogadores;
+        private FaixaEtaria faixaEtaria;
+        private DuracaoPartida duracaoPartida;
+        private Set<CategoriaJogo> categorias;
+        private String descricao;
+        private Boolean ativo;
+
+        public Builder() {
+        }
+
+        public Builder(UUID id, boolean ativo) {
+            this.id = id;
+            this.ativo = ativo;
+        }
+
+        public Builder nomeEditora(String nome, String editora) {
+            return nomeEditoraLancamento(nome, editora, null);
+        }
+
+        public Builder nomeEditoraLancamento(String nome, String editora, Integer anoLancamento) {
+            this.nome = nome;
+            this.editora = editora;
+            this.anoLancamento = anoLancamento != null ? Year.of(anoLancamento) : null;
+            return this;
+        }
+
+        public Builder numeroJogadores(int minimo, Integer maximo) {
+            this.numeroJogadores = new NumeroJogadores(minimo, maximo);
+            return this;
+        }
+
+        public Builder faixaEtaria(Integer idadeMinima, Integer idadeMaxima) {
+            this.faixaEtaria = new FaixaEtaria(idadeMinima, idadeMaxima);
+            return this;
+        }
+
+        public Builder duracaoPartida(Integer tempoMinimoMin, Integer tempoMaximoMin) {
+            this.duracaoPartida = new DuracaoPartida(tempoMinimoMin, tempoMaximoMin);
+            return this;
+        }
+
+        public Builder categorias(CategoriaJogo... categorias) {
+            this.categorias = new HashSet<>(Arrays.stream(categorias).toList());
+            return this;
+        }
+
+        public Builder descricao(String descricao) {
+            this.descricao = descricao;
+            return this;
+        }
+
+        public Jogo create() {
+            this.id = UUID.randomUUID();
+            this.ativo = ativo == null || ativo;
+            return build();
+        }
+
+        public Jogo reconstitute(UUID id, boolean ativo) {
+            this.id = id;
+            this.ativo = ativo;
+            return build();
+        }
+
+        public Jogo build() {
+            return new Jogo(
+                    id,
+                    nome,
+                    editora,
+                    anoLancamento,
+                    numeroJogadores,
+                    faixaEtaria,
+                    duracaoPartida,
+                    categorias,
+                    descricao,
+                    ativo
+            );
+        }
     }
 }

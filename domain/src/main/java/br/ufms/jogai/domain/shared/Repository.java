@@ -5,13 +5,13 @@ import java.util.Collection;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
-public interface Repository<Entity extends Entidade<? extends Id>, Id extends Serializable> {
+public interface Repository<E extends Entidade<ID>, ID extends Serializable> {
 
-    CompletableFuture<Entity> save(Entity entity);
+    CompletableFuture<E> save(E entity);
 
-    CompletableFuture<Void> delete(Id id);
+    CompletableFuture<Void> delete(ID id);
 
-    CompletableFuture<Optional<Entity>> get(Id id);
+    CompletableFuture<Optional<E>> get(ID id);
 
-    CompletableFuture<Collection<Entity>> getAll();
+    CompletableFuture<Collection<E>> getAll();
 }

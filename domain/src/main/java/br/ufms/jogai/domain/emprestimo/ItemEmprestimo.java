@@ -8,11 +8,9 @@ import java.time.Instant;
 public class ItemEmprestimo {
 
     private Exemplar exemplar;
-    private Instant dataDevolucao;
-
+    private Instant dataEfetivaDevolucao;
 
     public void relatarDano(EstadoConservacao novoEstado, String texto) {
         exemplar.setEstadoConservacao(novoEstado);
-
     }
 }
