@@ -3,6 +3,7 @@ package br.ufms.jogai.domain.jogo;
 import br.ufms.jogai.domain.shared.Page;
 import br.ufms.jogai.domain.shared.Repository;
 
+import java.util.Collection;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 

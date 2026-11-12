@@ -57,7 +57,7 @@ class UsuarioFirestorePojoRepositoryTest {
         Usuario created = await(repository.create(usuario));
 
         var snapshot = db.collection("usuarios").document(usuario.getId().toString()).get().get();
-        assertEquals(usuario.getNome(), snapshot.getString("nome"));
+        assertEquals(usuario.getNome(), snapshot.getString("nome"), snapshot.getData().toString());
         assertEquals(usuario.getEmail(), snapshot.getString("email"));
         assertFalse(snapshot.getData().containsKey("id"));
 

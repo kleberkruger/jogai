@@ -23,7 +23,7 @@ public class UsuarioFirestorePojoRepository extends FirestorePojoRepository<Usua
     }
 
     public UsuarioFirestorePojoRepository(Firestore firestore) {
-        super(Objects.requireNonNull(firestore).collection("categoriasJogo"),
+        super(Objects.requireNonNull(firestore).collection("usuarios"),
                 UsuarioDocument.class, UsuarioDocument::new);
     }
 
@@ -40,7 +40,6 @@ public class UsuarioFirestorePojoRepository extends FirestorePojoRepository<Usua
     @Override
     public CompletableFuture<Page<Usuario, UUID>> listarPorNome(String nome, int pageSize, UUID afterId) {
         Objects.requireNonNull(nome);
-
         return queryPage(collection
                 .whereGreaterThanOrEqualTo("nome", nome)
                 .whereLessThanOrEqualTo("nome", nome + "\uf8ff")
@@ -50,28 +49,24 @@ public class UsuarioFirestorePojoRepository extends FirestorePojoRepository<Usua
     @Override
     public CompletableFuture<Optional<Usuario>> buscarPorUsuario(String usuario) {
         Objects.requireNonNull(usuario);
-
         return queryOne(collection.whereEqualTo("usuario", usuario));
     }
 
     @Override
     public CompletableFuture<Optional<Usuario>> buscarPorEmail(String email) {
         Objects.requireNonNull(email);
-
         return queryOne(collection.whereEqualTo("email", email));
     }
 
     @Override
     public CompletableFuture<Optional<Usuario>> buscarPorTelefone(String telefone) {
         Objects.requireNonNull(telefone);
-
         return queryOne(collection.whereEqualTo("telefone", telefone));
     }
 
     @Override
     public CompletableFuture<Page<Usuario, UUID>> listarPorStatus(StatusUsuario status, int pageSize, UUID afterId) {
         Objects.requireNonNull(status);
-
         return queryPage(collection.whereEqualTo("status", status.name()), pageSize, afterId);
     }
 }

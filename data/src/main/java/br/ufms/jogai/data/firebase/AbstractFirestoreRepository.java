@@ -14,14 +14,7 @@ import java.io.Serializable;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.Collection;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.concurrent.ForkJoinPool;
@@ -279,17 +272,53 @@ public abstract class AbstractFirestoreRepository<E extends Entidade<ID>, ID ext
     abstract void setInTransaction(Transaction transaction, DocumentReference reference, Object data);
 
     /**
+     * Loads existing entities from references in one Firestore batch read. Every reference must
+     * point to a document directly in this repository's collection. Missing documents are omitted.
+     *
+     * @param references document references to load
+     * @return reconstructed entities in Firestore's returned order
+     */
+    public final CompletableFuture<Collection<E>> getAllByReferences(Collection<DocumentReference> references) {
+        Objects.requireNonNull(references, "Document references must not be null");
+        references.forEach(this::validateReference);
+        if (references.isEmpty()) {
+            return CompletableFuture.completedFuture(List.of());
+        }
+
+        DocumentReference[] referenceArray = references.toArray(DocumentReference[]::new);
+        return toCompletableFuture(db.getAll(referenceArray))
+                .thenCompose(documents -> {
+                    var existingDocuments = documents.stream().filter(DocumentSnapshot::exists).toList();
+                    var mapped = existingDocuments.stream().map(this::mapDocumentToEntityAsync).toList();
+                    return CompletableFuture.allOf(mapped.toArray(CompletableFuture[]::new))
+                            .thenApply(ignored -> mapped.stream().map(CompletableFuture::join).toList());
+                });
+    }
+
+    public final CompletableFuture<Collection<E>> getAllByReferences(DocumentReference... references) {
+        Objects.requireNonNull(references, "Document references must not be null");
+        return getAllByReferences(Arrays.asList(references));
+    }
+
+    private void validateReference(DocumentReference reference) {
+        Objects.requireNonNull(reference, "Document reference must not be null");
+        if (!collection.getPath().equals(reference.getParent().getPath())) {
+            throw new IllegalArgumentException("Document reference must belong to collection " + collection.getPath());
+        }
+    }
+
+    /**
      * Loads an entity from a document reference.
      *
      * @param reference the non-null document reference
      * @return the reconstructed entity, or an empty Optional if the document is missing
      */
-    protected final CompletableFuture<Optional<E>> get(DocumentReference reference) {
-        Objects.requireNonNull(reference, "Document reference must not be null");
+    public final CompletableFuture<Optional<E>> get(DocumentReference reference) {
+        validateReference(reference);
         return toCompletableFuture(reference.get())
-                .thenApply(document -> document.exists() ?
-                        Optional.of(mapDocumentToEntity(document)) :
-                        Optional.empty());
+                .thenCompose(document -> document.exists() ?
+                        mapDocumentToEntityAsync(document).thenApply(Optional::of) :
+                        CompletableFuture.completedFuture(Optional.empty()));
     }
 
     /**
@@ -314,7 +343,28 @@ public abstract class AbstractFirestoreRepository<E extends Entidade<ID>, ID ext
      */
     @Override
     public final CompletableFuture<Collection<E>> getAll() {
-        return toCompletableFuture(collection.get()).thenApply(this::documentsToEntities);
+        return toCompletableFuture(collection.get()).thenCompose(this::documentsToEntities);
+    }
+
+    /**
+     * Loads the existing entities with the supplied IDs in one Firestore batch read.
+     * Missing documents are omitted from the result. An empty ID collection returns an empty result.
+     *
+     * @param ids document identifiers to load
+     * @return the reconstructed entities in Firestore's returned order
+     */
+    public final CompletableFuture<Collection<E>> getAllById(Collection<ID> ids) {
+        Objects.requireNonNull(ids, "IDs must not be null");
+        DocumentReference[] references = ids.stream()
+                .map(this::documentReference)
+                .toArray(DocumentReference[]::new);
+        return getAllByReferences(references);
+    }
+
+    @SafeVarargs
+    public final CompletableFuture<Collection<E>> getAllById(ID... ids) {
+        Objects.requireNonNull(ids, "IDs must not be null");
+        return getAllById(Arrays.asList(ids));
     }
 
     /**
@@ -353,14 +403,18 @@ public abstract class AbstractFirestoreRepository<E extends Entidade<ID>, ID ext
     }
 
     private CompletableFuture<Page<E, ID>> readPage(Query query, int pageSize) {
-        return toCompletableFuture(query.limit(pageSize + 1).get()).thenApply(snapshot -> {
+        return toCompletableFuture(query.limit(pageSize + 1).get()).thenCompose(snapshot -> {
             var documents = snapshot.getDocuments();
             int count = Math.min(pageSize, documents.size());
-            var items = new ArrayList<E>(count);
-            for (int i = 0; i < count; i++) items.add(mapDocumentToEntity(documents.get(i)));
-            Optional<ID> next = documents.size() > pageSize
-                    ? Optional.of(items.getLast().getId()) : Optional.empty();
-            return new Page<>(items, next);
+            var mapped = documents.subList(0, count).stream()
+                    .map(this::mapDocumentToEntityAsync).toList();
+            return CompletableFuture.allOf(mapped.toArray(CompletableFuture[]::new))
+                    .thenApply(ignored -> {
+                        var items = mapped.stream().map(CompletableFuture::join).toList();
+                        Optional<ID> next = documents.size() > pageSize
+                                ? Optional.of(items.getLast().getId()) : Optional.empty();
+                        return new Page<E, ID>(items, next);
+                    });
         });
     }
 
@@ -379,9 +433,10 @@ public abstract class AbstractFirestoreRepository<E extends Entidade<ID>, ID ext
     protected final CompletableFuture<Optional<E>> queryOne(Query query) {
         Objects.requireNonNull(query, "Query must not be null");
         return toCompletableFuture(query.limit(1).get())
-                .thenApply(snapshot -> {
+                .thenCompose(snapshot -> {
                     var documents = snapshot.getDocuments();
-                    return documents.isEmpty() ? Optional.empty() : Optional.of(mapDocumentToEntity(documents.getFirst()));
+                    return documents.isEmpty() ? CompletableFuture.completedFuture(Optional.empty()) :
+                            mapDocumentToEntityAsync(documents.getFirst()).thenApply(Optional::of);
                 });
     }
 
@@ -391,16 +446,21 @@ public abstract class AbstractFirestoreRepository<E extends Entidade<ID>, ID ext
      * @param snapshot the query result
      * @return the reconstructed entities in query order
      */
-    private Collection<E> documentsToEntities(QuerySnapshot snapshot) {
-        return snapshot.getDocuments().stream().map(this::mapDocumentToEntity).toList();
+    private CompletableFuture<Collection<E>> documentsToEntities(QuerySnapshot snapshot) {
+        var mapped = snapshot.getDocuments().stream().map(this::mapDocumentToEntityAsync).toList();
+        return CompletableFuture.allOf(mapped.toArray(CompletableFuture[]::new))
+                .thenApply(ignored -> mapped.stream().map(CompletableFuture::join).toList());
     }
 
-    private E mapDocumentToEntity(DocumentSnapshot document) {
-        E entity = Objects.requireNonNull(documentToEntity(document), "Document mapper must not return null");
-        if (!document.getId().equals(idToStr(entity.getId()))) {
-            throw new IllegalArgumentException("Document mapper must preserve the document ID");
-        }
-        return entity;
+    private CompletableFuture<E> mapDocumentToEntityAsync(DocumentSnapshot document) {
+        return Objects.requireNonNull(documentToEntityAsync(document), "Document mapper must not return null")
+                .thenApply(entity -> {
+                    Objects.requireNonNull(entity, "Document mapper must not return null entity");
+                    if (!document.getId().equals(idToStr(entity.getId()))) {
+                        throw new IllegalArgumentException("Document mapper must preserve the document ID");
+                    }
+                    return entity;
+                });
     }
 
     /**
@@ -518,4 +578,11 @@ public abstract class AbstractFirestoreRepository<E extends Entidade<ID>, ID ext
      * @return the domain entity represented by the snapshot
      */
     protected abstract E documentToEntity(DocumentSnapshot document);
+
+    /**
+     * Asynchronous read mapping hook for entities that reference other documents.
+     */
+    protected CompletableFuture<E> documentToEntityAsync(DocumentSnapshot document) {
+        return CompletableFuture.completedFuture(documentToEntity(document));
+    }
 }

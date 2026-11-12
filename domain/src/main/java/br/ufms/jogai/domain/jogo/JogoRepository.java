@@ -9,7 +9,4 @@ import java.util.concurrent.CompletableFuture;
 
 public interface JogoRepository extends Repository<Jogo, UUID> {
 
-    CompletableFuture<Collection<Usuario>> buscarExemplaresPorJogo(String nomeJogo);
-
-    CompletableFuture<Collection<Usuario>> buscarExemplaresPorUsuario(String nomeUsuario);
 }

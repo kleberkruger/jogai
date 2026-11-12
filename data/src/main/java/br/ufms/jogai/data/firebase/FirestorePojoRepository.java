@@ -18,6 +18,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 import java.util.Set;
 
 /**
@@ -31,6 +33,7 @@ public abstract class FirestorePojoRepository<
 
     private final Class<D> documentType;
     private final EntityDocumentMapper<E, D> documentMapper;
+    private final Function<D, CompletableFuture<E>> asyncEntityMapper;
     private final Map<String, Method> uniqueAccessors;
 
     protected FirestorePojoRepository(CollectionReference collection, Class<D> documentType,
@@ -46,12 +49,19 @@ public abstract class FirestorePojoRepository<
 
     protected FirestorePojoRepository(CollectionReference collection, String scope, Class<D> documentType,
                                       Set<String> uniqueFields, EntityDocumentMapper<E, D> documentMapper) {
+        this(collection, scope, documentType, uniqueFields, documentMapper, null);
+    }
+
+    protected FirestorePojoRepository(CollectionReference collection, String scope, Class<D> documentType,
+                                      Set<String> uniqueFields, EntityDocumentMapper<E, D> documentMapper,
+                                      Function<D, CompletableFuture<E>> asyncEntityMapper) {
         super(collection, scope, union(uniqueFields(documentType), uniqueFields));
         this.documentType = Objects.requireNonNull(documentType, "Document type must not be null");
         if (!documentType.isRecord()) {
             throw new IllegalArgumentException("Firestore V2 document type must be a record");
         }
         this.documentMapper = Objects.requireNonNull(documentMapper, "Document mapper must not be null");
+        this.asyncEntityMapper = asyncEntityMapper;
         this.uniqueAccessors = resolveUniqueAccessors(documentType, uniqueFields());
     }
 
@@ -169,5 +179,12 @@ public abstract class FirestorePojoRepository<
     protected final E documentToEntity(DocumentSnapshot document) {
         D dto = Objects.requireNonNull(document.toObject(documentType), "Firestore returned an empty document");
         return Objects.requireNonNull(dto.toEntity(), "Document mapper must not return null");
+    }
+
+    @Override
+    protected CompletableFuture<E> documentToEntityAsync(DocumentSnapshot document) {
+        D dto = Objects.requireNonNull(document.toObject(documentType), "Firestore returned an empty document");
+        return asyncEntityMapper == null ? CompletableFuture.completedFuture(dto.toEntity())
+                : Objects.requireNonNull(asyncEntityMapper.apply(dto), "Async document mapper must not return null");
     }
 }

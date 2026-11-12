@@ -17,7 +17,7 @@ public class UsuarioFirestoreMapRepository extends FirestoreMapRepository<Usuari
     }
 
     public UsuarioFirestoreMapRepository(Firestore firestore) {
-        super(Objects.requireNonNull(firestore).collection("categoriasJogo"),
+        super(Objects.requireNonNull(firestore).collection("usuarios"),
                 Set.of("email", "telefone"));
     }
 
@@ -101,7 +101,6 @@ public class UsuarioFirestoreMapRepository extends FirestoreMapRepository<Usuari
     @Override
     public CompletableFuture<Page<Usuario, UUID>> listarPorStatus(StatusUsuario status, int pageSize, UUID afterId) {
         Objects.requireNonNull(status);
-
         return queryPage(collection.whereEqualTo("status", status.name()), pageSize, afterId);
     }
 }

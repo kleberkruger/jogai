@@ -254,12 +254,19 @@ public class Jogo extends Entidade<UUID> {
             return this;
         }
 
+        public Builder categorias(Set<CategoriaJogo> categorias) {
+            if (categorias == null) {
+                throw new IllegalArgumentException("As categorias não podem ser nulas");
+            }
+            this.categorias = categorias;
+            return this;
+        }
+
         public Builder categorias(CategoriaJogo... categorias) {
             if (categorias == null) {
                 throw new IllegalArgumentException("As categorias não podem ser nulas");
             }
-            this.categorias = new HashSet<>(Arrays.asList(categorias));
-            return this;
+            return categorias(Set.of(categorias));
         }
 
         public Builder descricao(String descricao) {

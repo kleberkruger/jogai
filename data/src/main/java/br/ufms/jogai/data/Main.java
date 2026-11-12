@@ -1,6 +1,9 @@
 package br.ufms.jogai.data;
 
+import br.ufms.jogai.data.repository.JogoFirestoreMapRepository;
 import br.ufms.jogai.data.repository.UsuarioFirestoreMapRepository;
+import br.ufms.jogai.domain.jogo.CategoriaJogo;
+import br.ufms.jogai.domain.jogo.Jogo;
 import br.ufms.jogai.domain.usuario.Usuario;
 
 import java.time.LocalDate;
@@ -12,11 +15,12 @@ public class Main {
     private static final String EMAIL_TESTE = "kleberkruger@gmail.com";
 
     static void main() {
+        executar("Adicionar jogo", Main::testarJogoAdicao);
         executar("Listar usuários", Main::testarListagem);
         executar("Criar usuário", Main::testarCriacao);
         executar("Buscar usuário por ID", Main::testarBuscaPorId);
         executar("Buscar usuário por e-mail", Main::testarBuscaPorEmail);
-        executar("Excluir usuário", Main::testarExclusao);
+//        executar("Excluir usuário", Main::testarExclusao);
     }
 
     private static void testarListagem() throws Exception {
@@ -77,6 +81,23 @@ public class Main {
         System.out.println(usuario.getNome() + " excluído com sucesso.");
     }
 
+    private static void testarJogoAdicao() throws Exception {
+        var jogoRepository = new JogoFirestoreMapRepository();
+        var jogo = Jogo.create()
+                .nomeEditoraLancamento("Detetive", "Estrela", 1985)
+                .numeroJogadores(2, 8)
+                .faixaEtaria(10, 99)
+                .duracaoPartida(1, 60)
+                .categorias(
+                        CategoriaJogo.create("Dedução", ""),
+                        CategoriaJogo.create("Estratégia", "")
+                )
+                .descricao("Jogo de raciocínio e memorização")
+                .build();
+        jogoRepository.create(jogo).get();
+        System.out.println(jogo.getNome() + " salvo com sucesso.");
+    }
+
     private static void executar(String nome, Teste teste) {
         System.out.println("\n=== " + nome + " ===");
         try {
@@ -85,13 +106,12 @@ public class Main {
             Thread.currentThread().interrupt();
             System.err.println("Operação interrompida.");
         } catch (ExecutionException e) {
-            Throwable causa = e.getCause();
-            while (causa != null && causa.getCause() != null) {
-                causa = causa.getCause();
-            }
-            System.err.println(causa != null ? causa.getMessage() : e.getMessage());
+            Throwable causa = e.getCause() != null ? e.getCause() : e;
+            System.err.println("Falha na operação: " + causa.getMessage());
+//            causa.printStackTrace(System.err);
         } catch (Exception e) {
-            System.err.println(e.getMessage());
+            System.err.println("Falha na operação: " + e.getMessage());
+//            e.printStackTrace(System.err);
         }
     }
 
