@@ -187,8 +187,8 @@ class FirestoreMapRepositoryTest {
         }
 
         @Override
-        protected Registro documentToEntity(DocumentSnapshot document) {
-            return new Registro(document.getId(), document.getString("valor"));
+        protected CompletableFuture<Registro> documentToEntity(DocumentSnapshot document) {
+            return CompletableFuture.completedFuture(new Registro(document.getId(), document.getString("valor")));
         }
 
         CompletableFuture<java.util.Optional<Registro>> buscar(String valor) {

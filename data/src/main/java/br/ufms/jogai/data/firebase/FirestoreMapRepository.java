@@ -10,6 +10,7 @@ import com.google.cloud.firestore.Transaction;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Firestore repository whose persistence representation is a field map.
@@ -70,4 +71,7 @@ public abstract class FirestoreMapRepository<E extends Entidade<ID>, ID extends 
     }
 
     protected abstract Map<String, Object> entityToMap(E entity);
+
+    @Override
+    protected abstract CompletableFuture<E> documentToEntity(DocumentSnapshot document);
 }

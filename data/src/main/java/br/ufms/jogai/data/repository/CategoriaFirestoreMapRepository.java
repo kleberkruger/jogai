@@ -31,12 +31,12 @@ public class CategoriaFirestoreMapRepository extends FirestoreMapRepository<Cate
     }
 
     @Override
-    protected CategoriaJogo documentToEntity(DocumentSnapshot document) {
-        return CategoriaJogo.reconstitute(
+    protected CompletableFuture<CategoriaJogo> documentToEntity(DocumentSnapshot document) {
+        return CompletableFuture.completedFuture(CategoriaJogo.reconstitute(
                 document.getId(),
                 document.getString("nome"),
                 document.getString("descricao")
-        );
+        ));
     }
 
     @Override

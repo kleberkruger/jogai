@@ -453,7 +453,7 @@ public abstract class AbstractFirestoreRepository<E extends Entidade<ID>, ID ext
     }
 
     private CompletableFuture<E> mapDocumentToEntityAsync(DocumentSnapshot document) {
-        return Objects.requireNonNull(documentToEntityAsync(document), "Document mapper must not return null")
+        return Objects.requireNonNull(documentToEntity(document), "Document mapper must not return null")
                 .thenApply(entity -> {
                     Objects.requireNonNull(entity, "Document mapper must not return null entity");
                     if (!document.getId().equals(idToStr(entity.getId()))) {
@@ -577,12 +577,5 @@ public abstract class AbstractFirestoreRepository<E extends Entidade<ID>, ID ext
      * @param document an existing document snapshot
      * @return the domain entity represented by the snapshot
      */
-    protected abstract E documentToEntity(DocumentSnapshot document);
-
-    /**
-     * Asynchronous read mapping hook for entities that reference other documents.
-     */
-    protected CompletableFuture<E> documentToEntityAsync(DocumentSnapshot document) {
-        return CompletableFuture.completedFuture(documentToEntity(document));
-    }
+    protected abstract CompletableFuture<E> documentToEntity(DocumentSnapshot document);
 }

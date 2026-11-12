@@ -49,7 +49,7 @@ public class UsuarioFirestoreMapRepository extends FirestoreMapRepository<Usuari
     }
 
     @Override
-    protected Usuario documentToEntity(DocumentSnapshot doc) {
+    protected CompletableFuture<Usuario> documentToEntity(DocumentSnapshot doc) {
         AvaliacaoMediaUsuario avaliacao = AvaliacaoMediaUsuario.reconstitute(
                 Objects.requireNonNull(doc.getLong("avaliacao.qtdAvaliacoesComodante")),
                 Objects.requireNonNull(doc.getDouble("avaliacao.mediaAvaliacaoComodante")),
@@ -57,7 +57,7 @@ public class UsuarioFirestoreMapRepository extends FirestoreMapRepository<Usuari
                 Objects.requireNonNull(doc.getDouble("avaliacao.mediaAvaliacaoComodatario"))
         );
 
-        return Usuario.reconstitute(
+        return CompletableFuture.completedFuture(Usuario.reconstitute(
                 UUID.fromString(doc.getId()),
                 doc.getString("nome"),
                 doc.getString("usuario"),
@@ -67,7 +67,7 @@ public class UsuarioFirestoreMapRepository extends FirestoreMapRepository<Usuari
                 avaliacao,
                 StatusUsuario.valueOf(doc.getString("status")),
                 toInstant(doc.getTimestamp("cadastradoEm"))
-        );
+        ));
     }
 
     @Override

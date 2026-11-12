@@ -176,13 +176,7 @@ public abstract class FirestorePojoRepository<
     }
 
     @Override
-    protected final E documentToEntity(DocumentSnapshot document) {
-        D dto = Objects.requireNonNull(document.toObject(documentType), "Firestore returned an empty document");
-        return Objects.requireNonNull(dto.toEntity(), "Document mapper must not return null");
-    }
-
-    @Override
-    protected CompletableFuture<E> documentToEntityAsync(DocumentSnapshot document) {
+    protected CompletableFuture<E> documentToEntity(DocumentSnapshot document) {
         D dto = Objects.requireNonNull(document.toObject(documentType), "Firestore returned an empty document");
         return asyncEntityMapper == null ? CompletableFuture.completedFuture(dto.toEntity())
                 : Objects.requireNonNull(asyncEntityMapper.apply(dto), "Async document mapper must not return null");

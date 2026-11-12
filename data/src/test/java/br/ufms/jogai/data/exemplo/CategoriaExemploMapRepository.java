@@ -8,6 +8,7 @@ import com.google.cloud.firestore.DocumentSnapshot;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Exemplo compilado e exercitado pelos testes de integração.
@@ -34,11 +35,11 @@ public final class CategoriaExemploMapRepository extends FirestoreMapRepository<
     }
 
     @Override
-    protected CategoriaExemplo documentToEntity(DocumentSnapshot document) {
-        return new CategoriaExemplo(
+    protected CompletableFuture<CategoriaExemplo> documentToEntity(DocumentSnapshot document) {
+        return CompletableFuture.completedFuture(new CategoriaExemplo(
                 idToUUID(document.getId()),
                 document.getString("nome"),
                 document.getString("codigo")
-        );
+        ));
     }
 }

@@ -88,9 +88,9 @@ class ProjectedReadsTest {
         }
 
         @Override
-        protected Payload documentToEntity(DocumentSnapshot document) {
-            return new Payload(document.getId(), (String) document.getData().get("contact.email"),
-                    document.getString("payload"));
+        protected CompletableFuture<Payload> documentToEntity(DocumentSnapshot document) {
+            return CompletableFuture.completedFuture(new Payload(document.getId(), (String) document.getData().get("contact.email"),
+                    document.getString("payload")));
         }
     }
 }

@@ -48,39 +48,7 @@ public class JogoFirestoreMapRepository extends FirestoreMapRepository<Jogo, UUI
     }
 
     @Override
-    protected Jogo documentToEntity(DocumentSnapshot doc) {
-        Object valor = doc.get("categorias");
-
-        List<DocumentReference> referencias = valor == null ? List.of() : ((List<?>) valor).stream()
-                .map(DocumentReference.class::cast)
-                .toList();
-
-        var categoriaRepository = new CategoriaFirestoreMapRepository(db);
-        Set<CategoriaJogo> categorias = new LinkedHashSet<>(categoriaRepository.getAllByReferences(referencias).join());
-
-        return Jogo.reconstitute(
-                        UUID.fromString(doc.getId()),
-                        Objects.requireNonNull(doc.getBoolean("ativo")))
-                .nomeEditoraLancamento(
-                        doc.getString("nome"),
-                        doc.getString("editora"),
-                        Objects.requireNonNull(doc.getLong("anoLancamento")).intValue())
-                .numeroJogadores(
-                        Objects.requireNonNull(doc.getLong("minimoJogadores")).intValue(),
-                        Objects.requireNonNull(doc.getLong("maximoJogadores")).intValue())
-                .faixaEtaria(
-                        Objects.requireNonNull(doc.getLong("idadeMinima")).intValue(),
-                        Objects.requireNonNull(doc.getLong("idadeMaxima")).intValue())
-                .duracaoPartida(
-                        Objects.requireNonNull(doc.getLong("duracaoMinima")).intValue(),
-                        Objects.requireNonNull(doc.getLong("duracaoMaxima")).intValue())
-                .categorias(categorias)
-                .descricao(doc.getString("descricao"))
-                .build();
-    }
-
-    @Override
-    protected CompletableFuture<Jogo> documentToEntityAsync(DocumentSnapshot doc) {
+    protected CompletableFuture<Jogo> documentToEntity(DocumentSnapshot doc) {
         Object valor = doc.get("categorias");
 
         List<DocumentReference> referencias = valor == null ? List.of() : ((List<?>) valor).stream()
@@ -92,23 +60,25 @@ public class JogoFirestoreMapRepository extends FirestoreMapRepository<Jogo, UUI
         return categoriaRepository.getAllByReferences(referencias)
                 .thenApply(resultado -> {
                     Set<CategoriaJogo> categorias = new LinkedHashSet<>(resultado);
-
                     return Jogo.reconstitute(
                                     UUID.fromString(doc.getId()),
                                     Objects.requireNonNull(doc.getBoolean("ativo")))
                             .nomeEditoraLancamento(
-                                    doc.getString("nome"),
-                                    doc.getString("editora"),
-                                    Objects.requireNonNull(doc.getLong("anoLancamento")).intValue())
+                                    doc.getString("nome"), doc.getString("editora"),
+                                    Objects.requireNonNull(doc.getLong("anoLancamento")).intValue()
+                            )
                             .numeroJogadores(
                                     Objects.requireNonNull(doc.getLong("minimoJogadores")).intValue(),
-                                    Objects.requireNonNull(doc.getLong("maximoJogadores")).intValue())
+                                    Objects.requireNonNull(doc.getLong("maximoJogadores")).intValue()
+                            )
                             .faixaEtaria(
                                     Objects.requireNonNull(doc.getLong("idadeMinima")).intValue(),
-                                    Objects.requireNonNull(doc.getLong("idadeMaxima")).intValue())
+                                    Objects.requireNonNull(doc.getLong("idadeMaxima")).intValue()
+                            )
                             .duracaoPartida(
                                     Objects.requireNonNull(doc.getLong("duracaoMinima")).intValue(),
-                                    Objects.requireNonNull(doc.getLong("duracaoMaxima")).intValue())
+                                    Objects.requireNonNull(doc.getLong("duracaoMaxima")).intValue()
+                            )
                             .categorias(categorias)
                             .descricao(doc.getString("descricao"))
                             .build();

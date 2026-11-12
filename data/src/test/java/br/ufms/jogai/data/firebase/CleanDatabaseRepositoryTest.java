@@ -132,7 +132,7 @@ class CleanDatabaseRepositoryTest {
         }
 
         @Override
-        protected Usuario documentToEntity(DocumentSnapshot document) {
+        protected CompletableFuture<Usuario> documentToEntity(DocumentSnapshot document) {
             reconstructions.incrementAndGet();
             return super.documentToEntity(document);
         }

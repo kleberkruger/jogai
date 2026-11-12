@@ -174,9 +174,9 @@ class RepositoryPaginationTest {
         }
 
         @Override
-        protected Item documentToEntity(DocumentSnapshot document) {
+        protected CompletableFuture<Item> documentToEntity(DocumentSnapshot document) {
             mappings.incrementAndGet();
-            return new Item(document.getId(), document.getString("name"), document.getString("group"));
+            return CompletableFuture.completedFuture(new Item(document.getId(), document.getString("name"), document.getString("group")));
         }
 
         CompletableFuture<Page<Item, String>> byGroup(String group, int size, String cursor) {

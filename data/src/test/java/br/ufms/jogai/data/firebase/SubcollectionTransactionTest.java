@@ -251,8 +251,8 @@ class SubcollectionTransactionTest {
         }
 
         @Override
-        protected Item documentToEntity(DocumentSnapshot document) {
-            return item(document.getId(), document.getString("value"));
+        protected CompletableFuture<Item> documentToEntity(DocumentSnapshot document) {
+            return CompletableFuture.completedFuture(item(document.getId(), document.getString("value")));
         }
 
         private CompletableFuture<Void> commit(Consumer<RepositoryWriteTransaction> planner) {
