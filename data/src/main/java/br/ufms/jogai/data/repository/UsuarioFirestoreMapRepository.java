@@ -17,7 +17,7 @@ public class UsuarioFirestoreMapRepository extends FirestoreMapRepository<Usuari
     }
 
     public UsuarioFirestoreMapRepository(Firestore firestore) {
-        super(Objects.requireNonNull(firestore).collection("usuarios"),
+        super(requireFirestore(firestore).collection("usuarios"),
                 Set.of("email", "telefone"));
     }
 
@@ -51,22 +51,22 @@ public class UsuarioFirestoreMapRepository extends FirestoreMapRepository<Usuari
     @Override
     protected CompletableFuture<Usuario> documentToEntity(DocumentSnapshot doc) {
         AvaliacaoMediaUsuario avaliacao = AvaliacaoMediaUsuario.reconstitute(
-                Objects.requireNonNull(doc.getLong("avaliacao.qtdAvaliacoesComodante")),
-                Objects.requireNonNull(doc.getDouble("avaliacao.mediaAvaliacaoComodante")),
-                Objects.requireNonNull(doc.getLong("avaliacao.qtdAvaliacoesComodatario")),
-                Objects.requireNonNull(doc.getDouble("avaliacao.mediaAvaliacaoComodatario"))
+                requiredLong(doc, "avaliacao.qtdAvaliacoesComodante"),
+                requiredDouble(doc, "avaliacao.mediaAvaliacaoComodante"),
+                requiredLong(doc, "avaliacao.qtdAvaliacoesComodatario"),
+                requiredDouble(doc, "avaliacao.mediaAvaliacaoComodatario")
         );
 
         return CompletableFuture.completedFuture(Usuario.reconstitute(
-                UUID.fromString(doc.getId()),
-                doc.getString("nome"),
-                doc.getString("usuario"),
-                doc.getString("email"),
-                doc.getString("telefone"),
-                toLocalDate(doc.getTimestamp("nascimento")),
+                requiredUUID(doc),
+                requiredString(doc, "nome"),
+                requiredString(doc, "usuario"),
+                requiredString(doc, "email"),
+                requiredString(doc, "telefone"),
+                requiredLocalDate(doc, "nascimento"),
                 avaliacao,
-                StatusUsuario.valueOf(doc.getString("status")),
-                toInstant(doc.getTimestamp("cadastradoEm"))
+                StatusUsuario.valueOf(requiredString(doc, "status")),
+                requiredInstant(doc, "cadastradoEm")
         ));
     }
 

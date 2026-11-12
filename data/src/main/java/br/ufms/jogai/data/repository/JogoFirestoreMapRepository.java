@@ -24,7 +24,7 @@ public class JogoFirestoreMapRepository extends FirestoreMapRepository<Jogo, UUI
     }
 
     public JogoFirestoreMapRepository(Firestore firestore) {
-        super(Objects.requireNonNull(firestore).collection("jogos"), Set.of("nome"));
+        super(requireFirestore(firestore).collection("jogos"), Set.of("nome"));
     }
 
     @Override
@@ -49,38 +49,26 @@ public class JogoFirestoreMapRepository extends FirestoreMapRepository<Jogo, UUI
 
     @Override
     protected CompletableFuture<Jogo> documentToEntity(DocumentSnapshot doc) {
-        Object valor = doc.get("categorias");
-
-        List<DocumentReference> referencias = valor == null ? List.of() : ((List<?>) valor).stream()
-                .map(DocumentReference.class::cast)
-                .toList();
-
         var categoriaRepository = new CategoriaFirestoreMapRepository(db);
 
-        return categoriaRepository.getAllByReferences(referencias)
+        return categoriaRepository.getAllByReferences(optionalDocumentRefs(doc, "categorias"))
                 .thenApply(resultado -> {
                     Set<CategoriaJogo> categorias = new LinkedHashSet<>(resultado);
                     return Jogo.reconstitute(
-                                    UUID.fromString(doc.getId()),
-                                    Objects.requireNonNull(doc.getBoolean("ativo")))
-                            .nomeEditoraLancamento(
-                                    doc.getString("nome"), doc.getString("editora"),
-                                    Objects.requireNonNull(doc.getLong("anoLancamento")).intValue()
+                                    requiredUUID(doc),
+                                    requiredBoolean(doc, "ativo")
                             )
-                            .numeroJogadores(
-                                    Objects.requireNonNull(doc.getLong("minimoJogadores")).intValue(),
-                                    Objects.requireNonNull(doc.getLong("maximoJogadores")).intValue()
-                            )
-                            .faixaEtaria(
-                                    Objects.requireNonNull(doc.getLong("idadeMinima")).intValue(),
-                                    Objects.requireNonNull(doc.getLong("idadeMaxima")).intValue()
-                            )
-                            .duracaoPartida(
-                                    Objects.requireNonNull(doc.getLong("duracaoMinima")).intValue(),
-                                    Objects.requireNonNull(doc.getLong("duracaoMaxima")).intValue()
-                            )
+                            .nomeEditoraLancamento(requiredString(doc, "nome"),
+                                    optionalString(doc, "editora"),
+                                    requiredInt(doc, "anoLancamento"))
+                            .numeroJogadores(requiredInt(doc, "minimoJogadores"),
+                                    requiredInt(doc, "maximoJogadores"))
+                            .faixaEtaria(requiredInt(doc, "idadeMinima"),
+                                    requiredInt(doc, "idadeMaxima"))
+                            .duracaoPartida(requiredInt(doc, "duracaoMinima"),
+                                    requiredInt(doc, "duracaoMaxima"))
                             .categorias(categorias)
-                            .descricao(doc.getString("descricao"))
+                            .descricao(optionalString(doc, "descricao"))
                             .build();
                 });
     }

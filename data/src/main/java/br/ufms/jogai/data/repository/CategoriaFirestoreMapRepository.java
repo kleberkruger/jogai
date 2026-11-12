@@ -19,7 +19,7 @@ public class CategoriaFirestoreMapRepository extends FirestoreMapRepository<Cate
     }
 
     public CategoriaFirestoreMapRepository(Firestore firestore) {
-        super(Objects.requireNonNull(firestore).collection("categoriasJogo"), Set.of("nome"));
+        super(requireFirestore(firestore).collection("categoriasJogo"), Set.of("nome"));
     }
 
     @Override

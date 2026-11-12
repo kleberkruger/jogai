@@ -37,7 +37,7 @@ public final class CategoriaExemploMapRepository extends FirestoreMapRepository<
     @Override
     protected CompletableFuture<CategoriaExemplo> documentToEntity(DocumentSnapshot document) {
         return CompletableFuture.completedFuture(new CategoriaExemplo(
-                idToUUID(document.getId()),
+                requiredUUID(document),
                 document.getString("nome"),
                 document.getString("codigo")
         ));

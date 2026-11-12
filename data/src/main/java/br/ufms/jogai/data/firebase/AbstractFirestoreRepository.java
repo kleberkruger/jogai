@@ -48,7 +48,7 @@ import java.util.concurrent.ForkJoinPool;
  *             never a relative path containing slashes
  */
 public abstract class AbstractFirestoreRepository<E extends Entidade<ID>, ID extends Serializable, P>
-        implements Repository<E, ID> {
+        implements Repository<E, ID>, DocumentSnapshotExtractors {
 
     /**
      * Maximum number of entities returned by a page.
@@ -464,17 +464,6 @@ public abstract class AbstractFirestoreRepository<E extends Entidade<ID>, ID ext
     }
 
     /**
-     * Parses a UUID document ID.
-     *
-     * @param id the UUID string
-     * @return the parsed UUID
-     * @throws IllegalArgumentException if the string is not a valid UUID
-     */
-    protected static UUID idToUUID(String id) {
-        return UUID.fromString(id);
-    }
-
-    /**
      * Converts an ID into a document name; subclasses may override for custom identifier types.
      *
      * @param id the non-null entity identifier
@@ -516,27 +505,6 @@ public abstract class AbstractFirestoreRepository<E extends Entidade<ID>, ID ext
     }
 
     /**
-     * Converts a timestamp to an Instant without losing its nanosecond component.
-     *
-     * @param timestamp the non-null Firestore timestamp
-     * @return the equivalent instant
-     */
-    protected static Instant toInstant(Timestamp timestamp) {
-        Objects.requireNonNull(timestamp, "Timestamp must not be null");
-        return Instant.ofEpochSecond(timestamp.getSeconds(), timestamp.getNanos());
-    }
-
-    /**
-     * Extracts the calendar date in UTC.
-     *
-     * @param timestamp the timestamp to convert
-     * @return its UTC date
-     */
-    protected static LocalDate toLocalDate(Timestamp timestamp) {
-        return toInstant(timestamp).atZone(ZoneOffset.UTC).toLocalDate();
-    }
-
-    /**
      * Adapts an ApiFuture, preserving its result or failure using the common ForkJoinPool.
      * Cancellation of the returned future is not propagated to the source future.
      *
@@ -569,6 +537,20 @@ public abstract class AbstractFirestoreRepository<E extends Entidade<ID>, ID ext
      */
     protected RuntimeException duplicateValueException(String field) {
         return new DuplicateUniqueValueException(field);
+    }
+
+    // ------------------------------------------------------------------
+    //  Convenience helpers
+    // ------------------------------------------------------------------
+
+    /**
+     * Validates that the Firestore client is not null.
+     *
+     * @param firestore the Firestore client to validate
+     * @return the same non-null Firestore client
+     */
+    protected static Firestore requireFirestore(Firestore firestore) {
+        return Objects.requireNonNull(firestore, "Firestore must not be null");
     }
 
     /**

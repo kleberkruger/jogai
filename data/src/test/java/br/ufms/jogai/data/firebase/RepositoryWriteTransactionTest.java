@@ -203,7 +203,7 @@ class RepositoryWriteTransactionTest {
 
             @Override
             protected CompletableFuture<CategoriaExemplo> documentToEntity(DocumentSnapshot document) {
-                return CompletableFuture.completedFuture(new CategoriaExemplo(idToUUID(document.getId()), document.getString("nome"), document.getString("codigo")));
+                return CompletableFuture.completedFuture(new CategoriaExemplo(requiredUUID(document), document.getString("nome"), document.getString("codigo")));
             }
         };
         var result = users.writeTransaction(writes -> List.of(writes.create(users, user("a", 1)),
@@ -409,7 +409,7 @@ class RepositoryWriteTransactionTest {
 
             @Override
             protected CompletableFuture<CategoriaExemplo> documentToEntity(DocumentSnapshot document) {
-                return CompletableFuture.completedFuture(new CategoriaExemplo(idToUUID(document.getId()), document.getString("nome"), document.getString("codigo")));
+                return CompletableFuture.completedFuture(new CategoriaExemplo(requiredUUID(document), document.getString("nome"), document.getString("codigo")));
             }
         };
     }
