@@ -1,6 +1,7 @@
 package br.ufms.jogai.data.firebase;
 
 import br.ufms.jogai.data.exemplo.RegistrationExampleMapRepository;
+import br.ufms.jogai.data.repository.UsuarioFirestoreMapRepository;
 import br.ufms.jogai.domain.shared.Entidade;
 import br.ufms.jogai.domain.usuario.Usuario;
 import br.ufms.jogai.data.exemplo.CategoriaExemplo;
@@ -24,7 +25,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import static br.ufms.jogai.data.firebase.UniqueValuesFirestoreRepository.COLLECTION_PATH;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -82,7 +82,8 @@ class SubcollectionTransactionTest {
         var users = new RegistrationExampleMapRepository(db);
         var user = Usuario.create("Pessoa Exemplo", "pessoa_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12),
                 "person@example.com", "67996122809", LocalDate.of(1990, 1, 1));
-        var categories = new CategoriaExemploMapRepository(db.collection("usuarios").document(user.getId().toString())
+        var categories = new CategoriaExemploMapRepository(db.collection(UsuarioFirestoreMapRepository.COLLECTION_PATH)
+                .document(user.getId().toString())
                 .collection("categorias"));
         var category = new CategoriaExemplo(UUID.randomUUID(), "Jogos de Tabuleiro", "EST");
         await(users.register(user, categories, category));

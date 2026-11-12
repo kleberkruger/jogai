@@ -14,12 +14,14 @@ import java.util.concurrent.CompletableFuture;
 public class CategoriaFirestoreMapRepository extends FirestoreMapRepository<CategoriaJogo, String>
         implements CategoriaRepository {
 
+    public static final String COLLECTION_PATH = "categoriasJogo";
+
     public CategoriaFirestoreMapRepository() {
         this(FirebaseConfig.getFirestore());
     }
 
     public CategoriaFirestoreMapRepository(Firestore firestore) {
-        super(requireFirestore(firestore).collection("categoriasJogo"), Set.of("nome"));
+        super(requireFirestore(firestore).collection(COLLECTION_PATH), Set.of("nome"));
     }
 
     @Override

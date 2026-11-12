@@ -15,8 +15,10 @@ import java.util.concurrent.CompletableFuture;
  */
 public final class CategoriaExemploMapRepository extends FirestoreMapRepository<CategoriaExemplo, UUID> {
 
+    public static final String COLLECTION_NAME = "categorias_exemplo";
+
     public CategoriaExemploMapRepository(Firestore firestore) {
-        super(firestore.collection("categorias_exemplo"), Set.of("codigo"));
+        super(firestore.collection(COLLECTION_NAME), Set.of("codigo"));
     }
 
     /**

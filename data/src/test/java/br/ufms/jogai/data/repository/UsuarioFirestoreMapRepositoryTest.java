@@ -426,7 +426,7 @@ class UsuarioFirestoreMapRepositoryTest {
             reservas.reserve("usuarios", "email", "novo@example.com", a.getId().toString());
             reservas.release("usuarios", "email", a.getEmail(), a.getId().toString());
             reservas.apply();
-            transaction.update(db.collection("usuarios").document(a.getId().toString()), "email", "novo@example.com");
+            transaction.update(db.collection(UsuarioFirestoreMapRepository.COLLECTION_PATH).document(a.getId().toString()), "email", "novo@example.com");
             throw new IllegalStateException("Falha simulada antes do commit");
         });
         Exception erro = assertThrows(Exception.class, () -> falha.get(45, TimeUnit.SECONDS));
@@ -450,7 +450,7 @@ class UsuarioFirestoreMapRepositoryTest {
             reservas.reserve("usuarios", "email", "novo@example.com", a.getId().toString());
             reservas.release("usuarios", "email", a.getEmail(), a.getId().toString());
             reservas.apply();
-            transaction.update(db.collection("usuarios").document(a.getId().toString()), "email", "novo@example.com");
+            transaction.update(db.collection(UsuarioFirestoreMapRepository.COLLECTION_PATH).document(a.getId().toString()), "email", "novo@example.com");
             // update exige um documento existente: o servidor deve rejeitar o commit inteiro.
             transaction.update(db.collection("falhas_de_teste").document("inexistente"), "valor", 1);
             return null;

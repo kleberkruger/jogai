@@ -3,10 +3,8 @@ package br.ufms.jogai.data.repository;
 import br.ufms.jogai.data.firebase.FirestoreMapRepository;
 import br.ufms.jogai.data.firebase.config.FirebaseConfig;
 import br.ufms.jogai.domain.jogo.CategoriaJogo;
-import br.ufms.jogai.domain.jogo.CategoriaRepository;
 import br.ufms.jogai.domain.jogo.Jogo;
 import br.ufms.jogai.domain.jogo.JogoRepository;
-import com.google.cloud.firestore.DocumentReference;
 import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.Firestore;
 
@@ -19,12 +17,14 @@ import java.util.concurrent.CompletableFuture;
 public class JogoFirestoreMapRepository extends FirestoreMapRepository<Jogo, UUID>
         implements JogoRepository {
 
+    public static final String COLLECTION_PATH = "jogos";
+
     public JogoFirestoreMapRepository() {
         this(FirebaseConfig.getFirestore());
     }
 
     public JogoFirestoreMapRepository(Firestore firestore) {
-        super(requireFirestore(firestore).collection("jogos"), Set.of("nome"));
+        super(requireFirestore(firestore).collection(COLLECTION_PATH), Set.of("nome"));
     }
 
     @Override
@@ -40,7 +40,7 @@ public class JogoFirestoreMapRepository extends FirestoreMapRepository<Jogo, UUI
                 Map.entry("duracaoMinima", entity.getTempoMinimoEstimado().toMinutes()),
                 Map.entry("duracaoMaxima", entity.getTempoMaximoEstimado().toMinutes()),
                 Map.entry("categorias", entity.getCategorias().stream()
-                        .map(c -> db.collection("categoriasJogo").document(c.getTag()))
+                        .map(c -> db.collection(CategoriaFirestoreMapRepository.COLLECTION_PATH).document(c.getTag()))
                         .toList()),
                 Map.entry("descricao", entity.getDescricao()),
                 Map.entry("ativo", entity.isAtivo())

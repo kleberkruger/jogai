@@ -18,12 +18,14 @@ import java.util.concurrent.CompletableFuture;
 public class UsuarioFirestorePojoRepository extends FirestorePojoRepository<Usuario, UUID, UsuarioDocument>
         implements UsuarioRepository {
 
+    public static final String COLLECTION_PATH = "usuarios";
+
     public UsuarioFirestorePojoRepository() {
         this(FirebaseConfig.getFirestore());
     }
 
     public UsuarioFirestorePojoRepository(Firestore firestore) {
-        super(requireFirestore(firestore).collection("usuarios"),
+        super(requireFirestore(firestore).collection(COLLECTION_PATH),
                 UsuarioDocument.class, UsuarioDocument::new);
     }
 

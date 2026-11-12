@@ -92,7 +92,7 @@ class CleanDatabaseRepositoryTest {
         }
         assertEquals(1, winners);
         var winner = await(repository.getPage(10)).items().getFirst();
-        assertEquals(1, db.collection("usuarios").get().get().size());
+        assertEquals(1, db.collection(UsuarioFirestoreMapRepository.COLLECTION_PATH).get().get().size());
         var reservations = db.collection(COLLECTION_PATH).get().get().getDocuments();
         assertEquals(2, reservations.size());
         for (var reservation : reservations)

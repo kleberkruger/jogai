@@ -12,12 +12,14 @@ import java.util.concurrent.CompletableFuture;
 
 public class UsuarioFirestoreMapRepository extends FirestoreMapRepository<Usuario, UUID> implements UsuarioRepository {
 
+    public static final String COLLECTION_PATH = "usuarios";
+
     public UsuarioFirestoreMapRepository() {
         this(FirebaseConfig.getFirestore());
     }
 
     public UsuarioFirestoreMapRepository(Firestore firestore) {
-        super(requireFirestore(firestore).collection("usuarios"),
+        super(requireFirestore(firestore).collection(COLLECTION_PATH),
                 Set.of("email", "telefone"));
     }
 

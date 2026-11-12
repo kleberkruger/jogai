@@ -491,7 +491,7 @@ class RepositoryWriteTransactionTest {
                 try {
                     do {
                         Map<String, Integer> groups = new HashMap<>();
-                        for (var document : db.collection("usuarios").get().get(30, TimeUnit.SECONDS).getDocuments()) {
+                        for (var document : db.collection(UsuarioFirestoreMapRepository.COLLECTION_PATH).get().get(30, TimeUnit.SECONDS).getDocuments()) {
                             String local = document.getString("email").split("@")[0];
                             groups.merge(local.substring(0, local.lastIndexOf('-')), 1, Integer::sum);
                         }
